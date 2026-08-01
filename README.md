@@ -20,7 +20,7 @@ Apple Pi 是一个面向 Windows 的桌面端 AI 编程 Agent。它以 Electron 
 
 ## 截图
 
-![Apple Pi 对话界面](app/scripts/chat-ui.png)
+![Apple Pi 1.4.2 主界面](app/scripts/apple-pi-1.4.2-main.png)
 
 ## 从源码运行
 

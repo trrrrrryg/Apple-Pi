@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apple Pi GitHub Workflow Demo</title>
+  <!--
+    Assumptions:
+    - This is a public README demo, not an application mockup.
+    - The two screenshots are captured from an isolated Apple Pi instance.
+    - Callouts only annotate capabilities represented by the real UI; no user data is shown.
+  -->
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #f2f1ee; }
+    body { display: grid; place-items: center; font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; }
+    .frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; isolation: isolate; background: #f5f4f1; color: #172331; }
+    .grid { position: absolute; inset: 0; opacity: .46; background-image: linear-gradient(rgba(26, 39, 53, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 39, 53, .06) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.6), transparent 78%); }
+    .eyebrow { position: absolute; top: 74px; left: 96px; display: flex; align-items: center; gap: 14px; font: 700 16px/1 "Segoe UI", sans-serif; letter-spacing: .16em; color: #526171; opacity: 0; animation: eyebrow 12s linear infinite; }
+    .eyebrow img { width: 34px; height: 34px; object-fit: contain; }
+    .headline { position: absolute; z-index: 4; top: 126px; left: 96px; width: 460px; margin: 0; font-size: 50px; line-height: 1.08; letter-spacing: 0; opacity: 0; animation: headline 12s linear infinite; }
+    .subhead { position: absolute; z-index: 4; top: 250px; left: 98px; width: 340px; margin: 0; color: #526171; font-size: 19px; line-height: 1.55; opacity: 0; animation: headline 12s linear infinite; }
+    .app-shot { position: absolute; z-index: 2; top: 113px; left: 342px; width: 1236px; height: 842px; overflow: hidden; border: 1px solid #d6d9dc; border-radius: 12px; background: #fff; box-shadow: 0 38px 76px rgba(30, 42, 54, .14), 0 8px 18px rgba(30, 42, 54, .10); transform-origin: 27% 30%; animation: screen 12s cubic-bezier(.65,0,.35,1) infinite; }
+    .app-shot img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center 46%; }
+    .veil { position: absolute; z-index: 3; inset: 0; background: rgba(14, 24, 35, .10); opacity: 0; animation: veil 12s linear infinite; pointer-events: none; }
+    .focus { position: absolute; z-index: 6; left: 359px; top: 227px; width: 188px; height: 55px; border: 3px solid #161f2d; border-radius: 10px; opacity: 0; box-shadow: 0 0 0 8px rgba(255,255,255,.82), 0 0 0 10px rgba(27, 43, 58, .10); animation: focus 12s linear infinite; }
+    .pointer { position: absolute; z-index: 9; left: 638px; top: 600px; width: 34px; height: 46px; opacity: 0; filter: drop-shadow(0 3px 4px rgba(14,24,35,.26)); animation: pointer 12s cubic-bezier(.33,0,.15,1) infinite; }
+    .pointer::before { content: ""; position: absolute; inset: 0; background: #172331; clip-path: polygon(4% 0, 4% 92%, 30% 68%, 47% 100%, 64% 91%, 47% 60%, 91% 60%); }
+    .pointer::after { content: ""; position: absolute; inset: 3px; background: #fff; clip-path: polygon(4% 0, 4% 92%, 30% 68%, 47% 100%, 64% 91%, 47% 60%, 91% 60%); }
+    .ripple { position: absolute; z-index: 8; left: 447px; top: 251px; width: 22px; height: 22px; border: 2px solid #172331; border-radius: 50%; opacity: 0; transform: translate(-50%, -50%) scale(.3); animation: ripple 12s linear infinite; }
+    .ripple.second { animation-delay: .10s; }
+    .project-card { position: absolute; z-index: 7; top: 311px; left: 365px; width: 270px; padding: 16px 18px; border: 1px solid #d3d8de; border-radius: 10px; background: rgba(255,255,255,.97); box-shadow: 0 16px 34px rgba(30,42,54,.15); opacity: 0; transform: translateY(-12px) scale(.98); animation: project-card 12s cubic-bezier(.2,.8,.3,1) infinite; }
+    .project-card strong { display: block; margin-bottom: 5px; color: #172331; font-size: 18px; }
+    .project-card span { color: #5b6979; font-size: 14px; }
+    .project-card::before { content: ""; position: absolute; top: -8px; left: 66px; width: 14px; height: 14px; border-top: 1px solid #d3d8de; border-left: 1px solid #d3d8de; background: #fff; transform: rotate(45deg); }
+    .callouts { position: absolute; z-index: 7; top: 310px; right: 96px; width: 314px; opacity: 0; animation: callouts 12s linear infinite; }
+    .callout { position: relative; margin: 0 0 12px; padding: 14px 16px 14px 52px; border: 1px solid #d5d9dd; border-radius: 10px; background: rgba(255,255,255,.94); box-shadow: 0 12px 26px rgba(30,42,54,.08); color: #233244; font-size: 16px; font-weight: 700; transform: translateY(12px); }
+    .callout small { display: block; margin-top: 4px; color: #657383; font-size: 12px; font-weight: 500; line-height: 1.4; }
+    .callout b { position: absolute; left: 16px; top: 14px; width: 23px; height: 23px; display: grid; place-items: center; border: 1px solid #91a0b1; border-radius: 5px; color: #263749; font: 700 13px/1 ui-monospace, Consolas, monospace; }
+    .callout:nth-child(1) { animation: callout-in 12s cubic-bezier(.2,.8,.3,1) infinite; }
+    .callout:nth-child(2) { animation: callout-in-2 12s cubic-bezier(.2,.8,.3,1) infinite; }
+    .callout:nth-child(3) { animation: callout-in-3 12s cubic-bezier(.2,.8,.3,1) infinite; }
+    .closing { position: absolute; z-index: 7; left: 96px; bottom: 104px; opacity: 0; animation: closing 12s linear infinite; }
+    .closing strong { display: block; font-size: 28px; line-height: 1.2; }
+    .closing span { display: block; margin-top: 8px; color: #526171; font-size: 16px; }
+    .watermark { position: absolute; z-index: 12; right: 34px; bottom: 27px; color: rgba(23,35,49,.46); font: 11px/1 ui-monospace, Consolas, monospace; letter-spacing: .15em; }
+    .preview *, .preview *::before, .preview *::after { animation-delay: calc(var(--preview-time) * -1s) !important; animation-play-state: paused !important; }
+    @keyframes eyebrow { 0%,3% { opacity: 0; transform: translateY(-8px); } 8%,22% { opacity: 1; transform: translateY(0); } 25%,100% { opacity: 0; } }
+    @keyframes headline { 0%,4% { opacity: 0; transform: translateY(14px); } 10%,22% { opacity: 1; transform: translateY(0); } 25%,100% { opacity: 0; } }
+    @keyframes screen { 0%,20% { transform: scale(.94); } 29%,44% { transform: scale(1.03) translate(7px, 1px); } 50%,71% { transform: scale(1.01) translate(4px, 0); } 82%,100% { transform: scale(.94); } }
+    @keyframes veil { 0%,19% { opacity: 0; } 24%,44% { opacity: 1; } 48%,100% { opacity: 0; } }
+    @keyframes focus { 0%,20% { opacity: 0; transform: scale(.94); } 24%,42% { opacity: 1; transform: scale(1); } 45%,100% { opacity: 0; transform: scale(1.02); } }
+    @keyframes pointer { 0%,18% { opacity: 0; transform: translate(0,0) scale(1); } 20% { opacity: 1; transform: translate(0,0) scale(1); } 27% { opacity: 1; transform: translate(-183px,-348px) scale(1); } 29% { opacity: 1; transform: translate(-183px,-348px) scale(.86); } 31%,43% { opacity: 1; transform: translate(-183px,-348px) scale(1); } 46%,100% { opacity: 0; transform: translate(-183px,-348px) scale(1); } }
+    @keyframes ripple { 0%,28% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 29% { opacity: .82; } 33% { opacity: 0; transform: translate(-50%,-50%) scale(4.2); } 100% { opacity: 0; } }
+    @keyframes project-card { 0%,31% { opacity: 0; transform: translateY(-12px) scale(.98); } 35%,43% { opacity: 1; transform: translateY(0) scale(1); } 47%,100% { opacity: 0; transform: translateY(-4px) scale(.99); } }
+    @keyframes callouts { 0%,47% { opacity: 0; } 51%,73% { opacity: 1; } 77%,100% { opacity: 0; } }
+    @keyframes callout-in { 0%,50% { transform: translateY(12px); } 54%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
+    @keyframes callout-in-2 { 0%,53% { transform: translateY(12px); } 57%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
+    @keyframes callout-in-3 { 0%,56% { transform: translateY(12px); } 60%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
+    @keyframes closing { 0%,77% { opacity: 0; transform: translateY(10px); } 82%,100% { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 1920px), (max-height: 1080px) { .frame { transform: scale(min(calc(100vw / 1920), calc(100vh / 1080))); transform-origin: center; } }
+  </style>
+</head>
+<body>
+  <main class="frame" aria-label="Apple Pi GitHub workflow demo">
+    <div class="grid" aria-hidden="true"></div>
+    <div class="eyebrow"><img src="../../app/renderer/assets/app-icon-rounded.png" alt="">APPLE PI</div>
+    <h1 class="headline">桌面端 AI 编程 Agent</h1>
+    <p class="subhead">从项目会话开始，在同一个工作区完成对话、工具调用和项目操作。</p>
+    <section class="app-shot" aria-label="Apple Pi isolated application screenshot"><img src="apple-pi-main.png" alt="Apple Pi application interface"></section>
+    <div class="veil" aria-hidden="true"></div>
+    <div class="focus" aria-hidden="true"></div>
+    <div class="pointer" aria-hidden="true"></div>
+    <div class="ripple" aria-hidden="true"></div><div class="ripple second" aria-hidden="true"></div>
+    <aside class="project-card"><strong>从项目开始</strong><span>对话与当前文件夹保持关联</span></aside>
+    <aside class="callouts" aria-label="Product capability callouts">
+      <div class="callout"><b>01</b>项目对话<small>让任务、文件夹与历史保持清晰归类</small></div>
+      <div class="callout"><b>02</b>模型与执行<small>按当前任务选择模型、推理与权限模式</small></div>
+      <div class="callout"><b>03</b>工作台<small>在一个窗口内进入改动审查、浏览器与终端</small></div>
+    </aside>
+    <div class="closing"><strong>开始构建。</strong><span>项目、模型与工具，都在一个桌面工作区中。</span></div>
+    <div class="watermark">Created by Huashu-Design</div>
+  </main>
+  <script>
+    const previewTime = Number(new URLSearchParams(location.search).get("preview"));
+    if (Number.isFinite(previewTime)) {
+      document.documentElement.classList.add("preview");
+      document.documentElement.style.setProperty("--preview-time", String(Math.max(0, Math.min(12, previewTime))));
+    }
+    document.fonts.ready.then(() => requestAnimationFrame(() => { window.__ready = true; }));
+  </script>
+</body>
+</html>

@@ -39,3 +39,7 @@ app/scripts/apple-pi-1.4.2-workbench.png
 # Download-source font folders are duplicated in renderer assets
 乐米沐和圆体（先保存，再下载）/
 普推黑体（先保存，再下载）/
+
+# Local review output generated for GitHub presentation assets
+docs/github-assets/screenshots/
+docs/github-assets/.render-tools/

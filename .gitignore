@@ -1,0 +1,38 @@
+# Dependencies and generated application output
+app/node_modules/
+app/dist/
+dist/
+
+# Local Electron state, diagnostics, and temporary test profiles
+app/.tmp*/
+app/*-profile/
+app/*.log
+app/**/*.log
+*.log
+npm-debug.log*
+
+# Local recovery data and accidental Windows placeholder file
+recovery/
+nul
+
+# Local editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment files and private credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+
+# Historical copies; source files are tracked instead
+*.bak
+*.bak.*
+
+# Download-source font folders are duplicated in renderer assets
+乐米沐和圆体（先保存，再下载）/
+普推黑体（先保存，再下载）/

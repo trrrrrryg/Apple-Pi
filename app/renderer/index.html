@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; frame-src https: http:;" />
+  <title>苹果Pi</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header id="app-titlebar" aria-label="窗口控制区">
+    <nav class="titlebar-menu" aria-label="应用菜单">
+      <button class="titlebar-menu-button" type="button" data-window-menu="file">File</button>
+      <button class="titlebar-menu-button" type="button" data-window-menu="edit">Edit</button>
+      <button class="titlebar-menu-button" type="button" data-window-menu="view">View</button>
+      <button class="titlebar-menu-button" type="button" data-window-menu="window">Window</button>
+    </nav>
+    <div class="titlebar-drag-region"></div>
+    <div class="window-controls">
+      <button id="btn-window-minimize" class="window-control" type="button" title="最小化" aria-label="最小化">
+        <span class="window-control-icon minimize" aria-hidden="true"></span>
+      </button>
+      <button id="btn-window-maximize" class="window-control" type="button" title="最大化" aria-label="最大化">
+        <span class="window-control-icon maximize" aria-hidden="true"></span>
+      </button>
+      <button id="btn-window-close" class="window-control close" type="button" title="关闭" aria-label="关闭">
+        <span class="window-control-icon close" aria-hidden="true"></span>
+      </button>
+    </div>
+  </header>
+  <div id="app">
+
+    <!-- ══════════ 左侧：深色导航栏 ══════════ -->
+    <aside id="sidenav">
+      <div class="sidenav-top">
+        <div class="sidenav-logo" title="苹果Pi">
+          <img class="logo-mark" data-theme-icon="brand" src="assets/logo-white.png" alt="苹果Pi" />
+        </div>
+        <div class="sidenav-brand label">
+          <div class="brand-name">苹果Pi</div>
+          <div class="brand-sub">好吃，爱吃</div>
+        </div>
+        <button id="btn-toggle-sidenav" class="sidenav-toggle" title="收起侧边栏" aria-label="收起侧边栏">
+          <span class="toggle-icon">≪</span>
+        </button>
+      </div>
+
+      <button id="btn-new-task" class="new-task-btn">
+        <span class="plus">＋</span> <span class="label">新建任务</span>
+      </button>
+
+      <nav class="sidenav-menu">
+        <button class="menu-item active" id="menu-tasks" data-view="tasks">
+          <img class="menu-icon asset-icon" data-theme-icon="task" src="assets/icons/task-list.png" alt="" />
+          <span class="label">任务</span>
+          <span class="menu-caret label" id="tasks-caret">▾</span>
+        </button>
+        <!-- 任务列表面板（点击"任务"展开） -->
+        <div id="tasks-panel" class="tasks-panel">
+          <div class="tp-section">
+            <div class="tp-title">项目</div>
+            <div id="project-list" class="tp-list"></div>
+          </div>
+          <div class="tp-section">
+            <div class="tp-title">非项目对话</div>
+            <div id="unprojected-task-list" class="tp-list"></div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="sidenav-footer">
+        <button class="footer-item"><span class="menu-icon">?</span><span class="label">帮助</span></button>
+
+        <!-- 苹果Pi 菜单：归档、环境与设置 -->
+        <div id="account-wrap">
+          <button id="account-chip" class="team-chip" title="苹果Pi">
+            <span class="team-name">苹果Pi</span>
+            <span class="team-caret">▾</span>
+          </button>
+
+          <!-- 气泡菜单 -->
+          <div id="account-popover" class="account-popover" aria-hidden="true">
+            <div class="ap-items">
+              <button class="ap-item" style="--i:0"><span class="label">归档</span></button>
+              <button class="ap-item" style="--i:1" data-action="open-environment"><span class="label">环境</span></button>
+              <button class="ap-item" style="--i:2" data-action="open-settings"><span class="label">设置</span></button>
+            </div>
+            <!-- 与入口的连接尖角（脱离阶段收起） -->
+            <div class="ap-tail"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══════════ 右侧：一体式对话窗口 ══════════ -->
+    <main id="workspace">
+
+      <!-- 独立工作区工具栏：不覆盖对话内容，也不与右侧工作台重叠。 -->
+      <header class="workspace-top-actions" aria-label="对话工具栏">
+        <button id="current-model-btn" class="model-badge" title="点击切换模型">
+          <span id="current-model-name">—</span><span class="model-drop-icon">▾</span>
+        </button>
+        <div id="thinking-level-wrap" class="thinking-level-wrap">
+          <button id="thinking-level-btn" class="model-badge thinking-level-btn" type="button" title="切换推理强度" aria-haspopup="menu" aria-expanded="false">
+            <span>推理</span><span id="current-thinking-level">关闭</span><span class="model-drop-icon">▾</span>
+          </button>
+          <div id="thinking-level-menu" class="thinking-level-menu" role="menu" aria-hidden="true"></div>
+        </div>
+        <button id="btn-theme-toggle" class="top-icon-btn theme-toggle-btn" type="button" title="切换到深色模式" aria-label="切换到深色模式">
+          <img id="theme-toggle-icon" src="assets/icons/sun.png" alt="" />
+        </button>
+        <div id="conversation-menu-wrap" class="conversation-menu-wrap">
+          <button id="btn-conversation-menu" class="top-icon-btn conversation-menu-btn" type="button" title="菜单" aria-label="菜单" aria-haspopup="menu" aria-expanded="false">≡</button>
+          <div id="conversation-menu-popover" class="conversation-menu-popover" role="menu" aria-hidden="true">
+            <button type="button" role="menuitem" data-action="conversation-new">新建对话</button>
+            <button type="button" role="menuitem" data-action="conversation-search">搜索当前对话</button>
+            <button type="button" role="menuitem" data-action="conversation-export">导出对话</button>
+            <button type="button" role="menuitem" data-action="conversation-fork">分支对话</button>
+            <div class="conversation-menu-divider" role="separator"></div>
+            <button type="button" role="menuitem" data-action="conversation-compact">立即压缩上下文</button>
+            <button type="button" role="menuitem" data-action="conversation-summary">对话摘要</button>
+            <button type="button" role="menuitem" data-action="conversation-copy">复制对话</button>
+            <button type="button" role="menuitem" data-action="conversation-archive">归档当前对话</button>
+            <button type="button" role="menuitem" data-action="conversation-info">会话信息</button>
+            <div class="conversation-menu-divider" role="separator"></div>
+            <button type="button" role="menuitem" data-action="open-menu-settings">菜单设置</button>
+          </div>
+        </div>
+        <button id="btn-change-review" class="top-icon-btn change-review-btn" type="button" title="改动审查" aria-label="改动审查"><span class="review-layout-icon" aria-hidden="true"></span></button>
+      </header>
+
+      <!-- Update notification is outside the message container so history restoration cannot remove it. -->
+      <div id="update-banner" class="update-banner hidden" aria-hidden="true" role="status">
+        <span class="update-banner-icon" aria-hidden="true">⤓</span>
+        <span id="update-banner-text">发现新版本</span>
+        <span class="update-banner-spacer"></span>
+        <progress id="update-progress-bar" class="update-progress-bar hidden" value="0" max="100" aria-label="下载进度"></progress>
+        <span id="update-progress-text" class="update-progress-text hidden">0%</span>
+        <button id="btn-update-download" class="update-banner-btn" type="button">下载更新</button>
+        <button id="btn-update-dismiss" class="update-banner-dismiss" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <!-- 对话区 -->
+      <section id="chat" class="chat" aria-live="polite">
+        <div id="chat-loading-bar" class="chat-loading-bar hidden"></div>
+        <div class="chat-placeholder" id="chat-placeholder">
+          <img class="placeholder-logo" data-theme-icon="brand" src="assets/logo-white.png" alt="苹果Pi" />
+          <h2 class="placeholder-title">准备好开始了吗？</h2>
+          <p>描述你的任务，按发送与 Agent 开始对话。</p>
+        </div>
+      </section>
+
+      <!-- 底部输入区 -->
+      <footer class="composer">
+        <div class="composer-inner">
+          <div class="composer-control-row">
+          <div id="project-binding-wrap" class="project-binding-wrap">
+            <button id="btn-project-binding" class="project-binding-btn" type="button" title="选择项目文件夹">
+              <img class="project-binding-icon" data-theme-icon="folder" src="assets/icons/folder.png" alt="" />
+              <span id="project-binding-label">选择项目文件夹</span>
+              <span id="project-binding-caret" class="project-binding-caret">▾</span>
+            </button>
+            <div id="project-binding-popover" class="project-binding-popover" aria-hidden="true">
+              <button type="button" data-project-action="unbind">取消绑定</button>
+              <button type="button" data-project-action="reselect">重新选择文件夹</button>
+            </div>
+          </div>
+          <div class="execution-context-row">
+            <div id="execution-mode-wrap" class="execution-mode-wrap">
+              <button id="btn-execution-mode" class="execution-mode-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+                <span class="execution-mode-icon" aria-hidden="true">◇</span><span id="execution-mode-label">每次确认</span><span class="model-drop-icon">▾</span>
+              </button>
+              <div id="execution-mode-menu" class="execution-mode-menu" role="menu" aria-hidden="true">
+                <button type="button" data-execution-mode="read-only"><strong>只读</strong><small>只允许读取与搜索</small></button>
+                <button type="button" data-execution-mode="ask"><strong>每次确认</strong><small>危险操作逐项确认</small></button>
+                <button type="button" data-execution-mode="auto"><strong>自动执行</strong><small>复杂任务自动规划并执行</small></button>
+              </div>
+            </div>
+            <div id="context-compression" class="context-compression" title="自动上下文压缩">
+              <span class="context-label">上下文</span>
+              <span class="context-track"><span id="context-progress" class="context-progress"></span></span>
+              <span id="context-summary" class="context-summary">等待首轮回复</span>
+            </div>
+            <div id="plan-list-wrap" class="plan-list-wrap hidden">
+              <button id="btn-plan-list" class="plan-list-btn" type="button" aria-haspopup="dialog" aria-expanded="false">
+                <span>计划列表</span><span id="plan-list-count" class="plan-list-count"></span>
+              </button>
+              <section id="plan-list-popover" class="plan-list-popover" role="dialog" aria-label="当前任务计划" aria-hidden="true">
+                <div class="plan-list-title">当前计划</div>
+                <div id="plan-list-items" class="plan-list-items"></div>
+              </section>
+            </div>
+          </div>
+          </div>
+          <div class="composer-box">
+            <div id="attachment-list" class="attachment-list" aria-live="polite"></div>
+            <div id="tag-bar" class="tag-bar hidden" aria-live="polite"></div>
+            <div class="input-wrap">
+              <textarea id="input" rows="1" placeholder="给 Agent 发送消息…（Enter 发送 / Shift+Enter 换行）"></textarea>
+              <div id="autocomplete-dropdown" class="autocomplete-dropdown hidden" role="listbox" aria-hidden="true"></div>
+            </div>
+            <div class="composer-bar">
+              <div class="composer-tools">
+                <button id="btn-attachment" class="attachment-btn" type="button" title="添加附件" aria-label="添加附件"><img class="attachment-icon" data-theme-icon="attachment" src="assets/icons/attachment.png" alt="" /></button>
+                <div id="mcp-menu-wrap" class="composer-menu-wrap">
+                  <button id="btn-mcp-menu" class="attachment-btn" type="button" title="MCP 服务器" aria-label="MCP 服务器">⌘</button>
+                  <div id="mcp-menu-popover" class="composer-menu-popover" aria-hidden="true">
+                    <div class="composer-menu-title composer-menu-title-row"><span>MCP 服务器</span><button id="btn-refresh-mcp-health" class="composer-menu-refresh" type="button" title="刷新 MCP 健康状态" aria-label="刷新 MCP 健康状态">↻</button></div>
+                    <div id="mcp-menu-list" class="composer-menu-list"></div>
+                  </div>
+                </div>
+                <div id="skill-menu-wrap" class="composer-menu-wrap">
+                  <button id="btn-skill-menu" class="attachment-btn skill-menu-btn" type="button" title="Skill" aria-label="Skill">
+                    <svg class="skill-line-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 1.5 9.65 6.35 14.5 8 9.65 9.65 8 14.5 6.35 9.65 1.5 8 6.35 6.35 8 1.5Z"/><path d="M13 2.4v2.2M14.1 3.5h-2.2"/></svg>
+                  </button>
+                  <div id="skill-menu-popover" class="composer-menu-popover" aria-hidden="true">
+                    <div class="composer-menu-title">Skill</div>
+                    <div id="skill-menu-list" class="composer-menu-list"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="composer-actions">
+                <button id="btn-send" class="send-btn" type="button" title="发送" aria-label="发送" disabled>
+                  <span class="send-arrow" aria-hidden="true">&#8593;</span>
+                  <span class="send-stop" aria-hidden="true"></span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+    </main>
+
+    <div id="workbench-resizer" class="workbench-resizer" role="separator" aria-orientation="vertical" aria-controls="change-review-panel" aria-label="调整工作台宽度" tabindex="0"></div>
+    <aside id="change-review-panel" class="change-review-panel" aria-hidden="true">
+      <header class="change-review-head"><div class="change-review-title"><div><h3>工作台</h3><p id="change-review-root">当前项目</p></div><button id="btn-workbench-help" class="workbench-help-btn" type="button" title="工作台帮助" aria-label="工作台帮助">?</button></div><button id="btn-close-change-review" class="set-close" type="button" aria-label="关闭">×</button></header>
+      <nav class="change-review-tabs" aria-label="工作台视图">
+        <button class="change-review-tab active" type="button" data-review-view="review"><span class="review-tab-icon diff" aria-hidden="true"></span><span>改动审查</span></button>
+        <div class="workbench-tab-wrap"><button id="btn-workbench-browser" class="change-review-tab" type="button" aria-haspopup="menu" aria-expanded="false"><span class="review-tab-icon browser" aria-hidden="true"></span><span>浏览器</span></button><div id="browser-tab-menu" class="workbench-tab-menu" role="menu" aria-hidden="true"><div id="browser-tab-list" class="workbench-tab-list"></div><button id="btn-add-browser-tab" class="workbench-menu-add" type="button" role="menuitem">＋ 添加浏览器</button></div></div>
+        <div class="workbench-tab-wrap"><button id="btn-workbench-terminal" class="change-review-tab" type="button" aria-haspopup="menu" aria-expanded="false"><span class="review-tab-icon terminal" aria-hidden="true"></span><span>终端</span></button><div id="terminal-type-menu" class="workbench-tab-menu" role="menu" aria-hidden="true"><button type="button" role="menuitem" data-terminal-type="powershell">PowerShell</button><button type="button" role="menuitem" data-terminal-type="cmd">命令提示符</button></div></div>
+      </nav>
+      <section id="change-review-view" class="change-review-view">
+        <div id="change-review-status" class="change-review-status">正在读取 Git 改动…</div>
+        <div id="change-review-list" class="change-review-list"></div>
+      </section>
+      <section id="internal-browser-view" class="internal-browser-view hidden" aria-label="软件内浏览器">
+        <div class="browser-toolbar">
+          <button id="btn-browser-back" class="browser-icon-btn" type="button" title="后退" aria-label="后退">←</button>
+          <button id="btn-browser-forward" class="browser-icon-btn" type="button" title="前进" aria-label="前进">→</button>
+          <button id="btn-browser-reload" class="browser-icon-btn" type="button" title="刷新" aria-label="刷新">↻</button>
+          <form id="browser-address-form" class="browser-address-form"><input id="browser-address" type="text" inputmode="url" autocomplete="off" spellcheck="false" value="https://www.bing.com" aria-label="网页地址" /></form>
+        </div>
+        <webview id="internal-browser" class="internal-browser" src="https://www.bing.com" partition="persist:pi-browser"></webview>
+      </section>
+      <section id="terminal-view" class="terminal-view hidden" aria-label="项目终端"><div class="terminal-toolbar"><span id="terminal-cwd" class="terminal-cwd"></span><span id="terminal-type-label" class="terminal-type-label">PowerShell</span><button id="btn-stop-terminal" class="browser-icon-btn" type="button" title="停止当前命令" aria-label="停止当前命令" disabled>■</button></div><pre id="terminal-output" class="terminal-output" aria-live="polite"></pre><form id="terminal-command-form" class="terminal-command-form"><span id="terminal-prompt" aria-hidden="true">PS</span><input id="terminal-command" type="text" autocomplete="off" spellcheck="false" placeholder="在项目文件夹中运行命令" aria-label="终端命令" /><button id="btn-run-terminal" type="submit">运行</button></form></section>
+      <section id="workbench-help-popover" class="workbench-help-popover hidden" role="dialog" aria-modal="true" aria-labelledby="workbench-help-title"><header><h4 id="workbench-help-title">工作台帮助</h4><button id="btn-close-workbench-help" class="set-close" type="button" aria-label="关闭">×</button></header><div class="workbench-help-content"><p><strong>改动审查</strong>：查看项目 Git 改动，并接受、拒绝或回退单个文件。</p><p><strong>浏览器</strong>：点击标签管理多个浏览页签；新建页签会保存在浏览器菜单中。</p><p><strong>终端</strong>：命令在当前项目文件夹内运行；点击终端标签可切换 PowerShell 或命令提示符。</p><p>右上角 × 用于关闭整个工作台。</p></div></section>
+    </aside>
+  </div>
+
+  <div id="project-context-menu" class="project-context-menu" aria-hidden="true">
+    <button type="button" data-project-context-action="new-task">新建任务</button>
+    <button type="button" class="danger" data-project-context-action="delete-project">删除项目</button>
+  </div>
+  <div id="task-context-menu" class="task-context-menu" aria-hidden="true">
+    <button type="button" data-task-context-action="rename">重命名</button>
+    <button type="button" data-task-context-action="archive">归档任务</button>
+    <button type="button" class="danger" data-task-context-action="delete">删除任务</button>
+  </div>
+
+  <div id="conversation-tool-overlay" class="conversation-tool-overlay hidden" aria-hidden="true">
+    <div class="conversation-tool-backdrop"></div>
+    <section class="conversation-tool-dialog" role="dialog" aria-modal="true" aria-labelledby="conversation-tool-title">
+      <header class="conversation-tool-head"><h3 id="conversation-tool-title">对话工具</h3><button id="btn-close-conversation-tool" class="set-close" type="button" aria-label="关闭">×</button></header>
+      <div id="conversation-tool-body" class="conversation-tool-body"></div>
+    </section>
+  </div>
+
+  <div id="archive-overlay" class="conversation-tool-overlay hidden" aria-hidden="true">
+    <div class="conversation-tool-backdrop"></div>
+    <section class="conversation-tool-dialog archive-dialog" role="dialog" aria-modal="true" aria-labelledby="archive-title">
+      <header class="conversation-tool-head"><h3 id="archive-title">归档对话</h3><button id="btn-close-archive" class="set-close" type="button" aria-label="关闭">×</button></header>
+      <div id="archive-list" class="archive-list"></div>
+    </section>
+  </div>
+
+  <!-- ══════════ 设置面板（全屏遮罩） ══════════ -->
+  <div id="settings-overlay" class="settings-overlay hidden" aria-hidden="true">
+    <div class="settings-backdrop"></div>
+    <div class="settings-modal">
+      <!-- 左侧 Tab -->
+      <aside class="set-nav">
+        <button class="set-tab active" data-tab="general">通用</button>
+        <button class="set-tab" data-tab="models">模型设置</button>
+        <button class="set-tab" data-tab="web-search">联网搜索</button>
+        <button class="set-tab" data-tab="local-models">本地模型</button>
+        <button class="set-tab" data-tab="mcp">MCP 管理</button>
+        <button class="set-tab" data-tab="skills">Skill 管理</button>
+      </aside>
+      <!-- 右侧内容 -->
+      <div class="set-body">
+        <div class="set-head">
+          <h3 id="set-title">模型设置</h3>
+          <button id="btn-close-settings" class="set-close" title="关闭">✕</button>
+        </div>
+        <!-- 通用 Tab -->
+        <div class="set-pane hidden" data-pane="general">
+          <div class="general-settings">
+            <div class="general-setting-row">
+              <div>
+                <div class="general-setting-label">界面缩放</div>
+                <div id="display-zoom-display" class="general-setting-meta">当前显示器</div>
+              </div>
+              <select id="display-zoom-select" class="general-setting-select" aria-label="界面缩放">
+                <option value="1">100%</option>
+                <option value="1.1">110%</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+              </select>
+            </div>
+            <div class="general-setting-row">
+              <div>
+                <div class="general-setting-label">当前版本</div>
+                <div id="app-version-channel" class="general-setting-meta">正在读取版本信息…</div>
+              </div>
+              <output id="app-version" class="general-setting-value" aria-live="polite">—</output>
+            </div>
+            <div class="general-setting-row">
+              <div>
+                <div class="general-setting-label">软件更新</div>
+                <div id="update-status" class="general-setting-meta">仅正式安装版支持自动更新</div>
+              </div>
+              <button id="btn-check-update" class="general-setting-btn" type="button">检查更新</button>
+            </div>
+            <div class="general-setting-row">
+              <div>
+                <div class="general-setting-label">停止更新推送</div>
+                <div class="general-setting-meta">打开后将不再接收普通更新通知（必要更新仍会提示）</div>
+              </div>
+              <button id="toggle-update-notifications" class="menu-settings-toggle" type="button" role="switch" aria-checked="false" title="停止更新推送"><span></span></button>
+            </div>
+          </div>
+        </div>
+        <!-- 模型设置 Tab -->
+        <div class="set-pane" data-pane="models">
+          <div id="provider-list" class="provider-list">
+            <!-- JS 动态渲染厂商列表 -->
+          </div>
+        </div>
+        <!-- 联网搜索 Tab -->
+        <div class="set-pane hidden" data-pane="web-search">
+          <section class="web-search-settings" aria-labelledby="web-search-title">
+            <div class="web-search-heading">
+              <div>
+                <h4 id="web-search-title">Tavily 联网搜索</h4>
+                <p>默认使用无需配置的 Keyless 免费模式。</p>
+              </div>
+              <span id="web-search-status" class="web-search-status">正在检查</span>
+            </div>
+            <div class="web-search-key-row">
+              <label for="tavily-api-key">Tavily API Key</label>
+              <div class="web-search-key-input-row">
+                <input id="tavily-api-key" class="api-key-input" type="password" autocomplete="off" placeholder="可选：输入个人 Key 以获得更高额度" />
+                <button id="btn-save-tavily-key" class="api-key-save" type="button">保存</button>
+              </div>
+              <p class="web-search-help">留空并保存即可恢复 Keyless 免费模式。Key 仅加密保存在本机，不会显示在界面中。</p>
+            </div>
+            <div class="web-search-actions">
+              <button id="btn-open-tavily-dashboard" class="web-search-link" type="button">获取免费 API Key</button>
+              <button id="btn-clear-tavily-key" class="web-search-clear" type="button" hidden>清除已保存的 Key</button>
+            </div>
+          </section>
+        </div>
+        <div class="set-pane hidden" data-pane="local-models">
+          <section class="local-models-settings">
+            <div class="local-models-heading">
+              <div><h4>本地模型中心</h4><p>自动检测正在运行的本地推理服务，并接入模型选择器。</p></div>
+              <button id="btn-refresh-local-models" class="web-search-link" type="button">重新检测</button>
+            </div>
+            <div id="local-model-list" class="local-model-list"></div>
+          </section>
+        </div>
+        <!-- MCP Tab -->
+        <div class="set-pane hidden" data-pane="mcp">
+          <div class="integration-pane-head">
+            <p>已启用的服务器会在新会话中提供工具调用。</p>
+            <button id="btn-rescan-integrations" class="web-search-link" type="button">重新扫描</button>
+          </div>
+          <div id="mcp-settings-list" class="integration-list"></div>
+        </div>
+        <!-- Skill Tab -->
+        <div class="set-pane hidden" data-pane="skills">
+          <div class="integration-pane-head">
+            <p>启用后，Agent 可在需要时加载对应工作流说明。</p>
+          </div>
+          <div id="skill-settings-list" class="integration-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 菜单设置：独立界面，不包含通用设置侧边栏 -->
+  <div id="menu-settings-overlay" class="menu-settings-overlay hidden" aria-hidden="true">
+    <div class="menu-settings-backdrop"></div>
+    <section class="menu-settings-modal" role="dialog" aria-modal="true" aria-labelledby="menu-settings-title">
+      <header class="menu-settings-head">
+        <h3 id="menu-settings-title">菜单设置</h3>
+        <button id="btn-close-menu-settings" class="set-close" type="button" title="关闭" aria-label="关闭">×</button>
+      </header>
+      <div class="menu-settings-content">
+        <section class="menu-settings-skeleton" aria-label="菜单项">
+          <div class="menu-settings-section-title">图表</div>
+          <div class="menu-settings-row">
+            <span>启用 Mermaid 图表绘制</span>
+            <button id="toggle-mermaid-diagram" class="menu-settings-toggle" type="button" role="switch" aria-checked="true" title="启用 Mermaid 图表绘制"><span></span></button>
+          </div>
+        </section>
+        <section class="menu-settings-skeleton menu-browser-settings" aria-label="浏览器设置">
+          <div class="menu-settings-section-title">浏览器</div>
+          <div class="menu-settings-row browser-location-row">
+            <div><div>默认浏览器打开位置</div><small>点击对话中的网页地址时使用</small></div>
+            <div id="browser-open-location" class="browser-location-options" role="radiogroup" aria-label="默认浏览器打开位置">
+              <button type="button" role="radio" data-browser-location="external" aria-checked="false">外部浏览器</button>
+              <button type="button" role="radio" data-browser-location="internal" aria-checked="true">内部浏览器</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <div id="integration-import-overlay" class="integration-import-overlay hidden" aria-hidden="true">
+    <div class="integration-import-backdrop"></div>
+    <section class="integration-import-dialog" role="dialog" aria-modal="true" aria-labelledby="integration-import-title">
+      <h3 id="integration-import-title">导入已有配置</h3>
+      <p id="integration-import-summary"></p>
+      <div id="integration-import-details" class="integration-import-details"></div>
+      <div class="integration-import-actions">
+        <button id="btn-dismiss-integration-import" class="web-search-link" type="button">暂不导入</button>
+        <button id="btn-confirm-integration-import" class="api-key-save" type="button">导入并启用</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ══════════ 模型选择器弹窗 ══════════ -->
+  <div id="model-picker" class="model-picker hidden" aria-hidden="true">
+    <div class="mp-backdrop"></div>
+    <div class="mp-popover">
+      <div class="mp-head">
+        <h4>选择模型</h4>
+        <button id="btn-close-picker" class="set-close">✕</button>
+      </div>
+      <div id="mp-list" class="mp-list"><!-- JS 动态渲染 --></div>
+    </div>
+  </div>
+
+  <div id="tool-approval-overlay" class="tool-approval-overlay hidden" aria-hidden="true">
+    <section class="tool-approval-dialog" role="dialog" aria-modal="true" aria-labelledby="tool-approval-title">
+      <div class="tool-approval-kicker">需要确认</div><h3 id="tool-approval-title">允许工具执行？</h3>
+      <p id="tool-approval-description"></p><pre id="tool-approval-args"></pre>
+      <div class="tool-approval-actions"><button id="btn-deny-tool" class="web-search-link" type="button">拒绝</button><button id="btn-approve-tool" class="api-key-save" type="button">允许执行</button></div>
+    </section>
+  </div>
+
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

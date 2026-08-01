@@ -1,0 +1,68 @@
+{
+  "name": "pi-desktop-agent",
+  "version": "1.4.2",
+  "description": "Pi-based desktop coding agent (Electron + SDK)",
+  "main": "main/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "start": "electron .",
+    "dev": "electron . --inspect=9229",
+    "dist": "electron-builder --win nsis --x64"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "^0.81.1",
+    "@earendil-works/pi-ai": "^0.81.1",
+    "@earendil-works/pi-coding-agent": "^0.81.1",
+    "@iarna/toml": "^2.2.5",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "electron-updater": "^6.8.9",
+    "mermaid": "11.16.0"
+  },
+  "devDependencies": {
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "ws": "^8.21.1"
+  },
+  "build": {
+    "appId": "com.applepi.desktop",
+    "electronDist": "node_modules/electron/dist",
+    "productName": "苹果Pi",
+    "artifactName": "苹果Pi Setup ${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main/**/*",
+      "preload/**/*",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "renderer/assets/app-icon-rounded.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "苹果Pi"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "http://47.93.10.125/apple-pi/updates/"
+    }
+  }
+}

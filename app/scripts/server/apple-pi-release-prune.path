@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch Apple Pi update releases for pruning
+
+[Path]
+PathChanged=/var/www/html/apple-pi/updates
+Unit=apple-pi-release-prune.service
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,6 @@
+[Unit]
+Description=Prune expired Apple Pi update installers
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/apple-pi-prune-releases.sh

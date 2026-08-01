@@ -1,7 +1,7 @@
 <div align="center">
   <img src="app/renderer/assets/app-icon-rounded.png" alt="Apple Pi" width="88">
   <h1>Apple Pi</h1>
-  <p>面向 Windows 的桌面端 AI 编程 Agent。</p>
+  <p>基于开源 <a href="https://github.com/earendil-works/pi">Pi Agent</a> 构建的 Windows 桌面端 AI 编程 Agent。</p>
   <p>
     <strong>Windows 10/11 x64</strong> &nbsp;·&nbsp;
     <strong>Electron + Pi SDK</strong> &nbsp;·&nbsp;
@@ -25,6 +25,12 @@
 ## 适合持续开发的桌面工作区
 
 Apple Pi 将项目文件夹、会话、模型、工具调用和工作台能力放在同一个桌面应用中。选择项目后，对话默认在对应文件夹内进行；需要审查改动、打开网页或运行项目命令时，不必离开当前工作区。
+
+## 开源基础
+
+Apple Pi 基于开源 [Pi Agent](https://github.com/earendil-works/pi) 开发，并使用其 `@earendil-works/pi-*` 软件包提供的模型接口、Agent 循环与编程 Agent 能力。Apple Pi 在此基础上实现 Windows 桌面应用、项目与会话管理、图形界面、工作台、MCP/Skill 配置及更新分发等功能。
+
+Pi Agent 是独立的开源项目；Apple Pi 并非 Pi Agent 官方产品，也不代表上游项目立场。
 
 | 项目与对话 | 模型与扩展 | 工作台 |
 | --- | --- | --- |

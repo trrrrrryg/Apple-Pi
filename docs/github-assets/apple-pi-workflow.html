@@ -3,92 +3,210 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apple Pi GitHub Workflow Demo</title>
+  <title>Apple Pi · 任务到计划的桌面工作流</title>
   <!--
-    Assumptions:
-    - This is a public README demo, not an application mockup.
-    - The two screenshots are captured from an isolated Apple Pi instance.
-    - Callouts only annotate capabilities represented by the real UI; no user data is shown.
+    Public README asset. Both screens are captured from an isolated Apple Pi
+    instance; overlays annotate the real UI and never recreate product chrome.
   -->
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #f2f1ee; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #f6f5f2; }
     body { display: grid; place-items: center; font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif; }
-    .frame { position: relative; width: 1920px; height: 1080px; overflow: hidden; isolation: isolate; background: #f5f4f1; color: #172331; }
-    .grid { position: absolute; inset: 0; opacity: .46; background-image: linear-gradient(rgba(26, 39, 53, .06) 1px, transparent 1px), linear-gradient(90deg, rgba(26, 39, 53, .06) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.6), transparent 78%); }
-    .eyebrow { position: absolute; top: 74px; left: 96px; display: flex; align-items: center; gap: 14px; font: 700 16px/1 "Segoe UI", sans-serif; letter-spacing: .16em; color: #526171; opacity: 0; animation: eyebrow 12s linear infinite; }
-    .eyebrow img { width: 34px; height: 34px; object-fit: contain; }
-    .headline { position: absolute; z-index: 4; top: 126px; left: 96px; width: 460px; margin: 0; font-size: 50px; line-height: 1.08; letter-spacing: 0; opacity: 0; animation: headline 12s linear infinite; }
-    .subhead { position: absolute; z-index: 4; top: 250px; left: 98px; width: 340px; margin: 0; color: #526171; font-size: 19px; line-height: 1.55; opacity: 0; animation: headline 12s linear infinite; }
-    .app-shot { position: absolute; z-index: 2; top: 113px; left: 342px; width: 1236px; height: 842px; overflow: hidden; border: 1px solid #d6d9dc; border-radius: 12px; background: #fff; box-shadow: 0 38px 76px rgba(30, 42, 54, .14), 0 8px 18px rgba(30, 42, 54, .10); transform-origin: 27% 30%; animation: screen 12s cubic-bezier(.65,0,.35,1) infinite; }
-    .app-shot img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center 46%; }
-    .veil { position: absolute; z-index: 3; inset: 0; background: rgba(14, 24, 35, .10); opacity: 0; animation: veil 12s linear infinite; pointer-events: none; }
-    .focus { position: absolute; z-index: 6; left: 359px; top: 227px; width: 188px; height: 55px; border: 3px solid #161f2d; border-radius: 10px; opacity: 0; box-shadow: 0 0 0 8px rgba(255,255,255,.82), 0 0 0 10px rgba(27, 43, 58, .10); animation: focus 12s linear infinite; }
-    .pointer { position: absolute; z-index: 9; left: 638px; top: 600px; width: 34px; height: 46px; opacity: 0; filter: drop-shadow(0 3px 4px rgba(14,24,35,.26)); animation: pointer 12s cubic-bezier(.33,0,.15,1) infinite; }
-    .pointer::before { content: ""; position: absolute; inset: 0; background: #172331; clip-path: polygon(4% 0, 4% 92%, 30% 68%, 47% 100%, 64% 91%, 47% 60%, 91% 60%); }
-    .pointer::after { content: ""; position: absolute; inset: 3px; background: #fff; clip-path: polygon(4% 0, 4% 92%, 30% 68%, 47% 100%, 64% 91%, 47% 60%, 91% 60%); }
-    .ripple { position: absolute; z-index: 8; left: 447px; top: 251px; width: 22px; height: 22px; border: 2px solid #172331; border-radius: 50%; opacity: 0; transform: translate(-50%, -50%) scale(.3); animation: ripple 12s linear infinite; }
-    .ripple.second { animation-delay: .10s; }
-    .project-card { position: absolute; z-index: 7; top: 311px; left: 365px; width: 270px; padding: 16px 18px; border: 1px solid #d3d8de; border-radius: 10px; background: rgba(255,255,255,.97); box-shadow: 0 16px 34px rgba(30,42,54,.15); opacity: 0; transform: translateY(-12px) scale(.98); animation: project-card 12s cubic-bezier(.2,.8,.3,1) infinite; }
-    .project-card strong { display: block; margin-bottom: 5px; color: #172331; font-size: 18px; }
-    .project-card span { color: #5b6979; font-size: 14px; }
-    .project-card::before { content: ""; position: absolute; top: -8px; left: 66px; width: 14px; height: 14px; border-top: 1px solid #d3d8de; border-left: 1px solid #d3d8de; background: #fff; transform: rotate(45deg); }
-    .callouts { position: absolute; z-index: 7; top: 310px; right: 96px; width: 314px; opacity: 0; animation: callouts 12s linear infinite; }
-    .callout { position: relative; margin: 0 0 12px; padding: 14px 16px 14px 52px; border: 1px solid #d5d9dd; border-radius: 10px; background: rgba(255,255,255,.94); box-shadow: 0 12px 26px rgba(30,42,54,.08); color: #233244; font-size: 16px; font-weight: 700; transform: translateY(12px); }
-    .callout small { display: block; margin-top: 4px; color: #657383; font-size: 12px; font-weight: 500; line-height: 1.4; }
-    .callout b { position: absolute; left: 16px; top: 14px; width: 23px; height: 23px; display: grid; place-items: center; border: 1px solid #91a0b1; border-radius: 5px; color: #263749; font: 700 13px/1 ui-monospace, Consolas, monospace; }
-    .callout:nth-child(1) { animation: callout-in 12s cubic-bezier(.2,.8,.3,1) infinite; }
-    .callout:nth-child(2) { animation: callout-in-2 12s cubic-bezier(.2,.8,.3,1) infinite; }
-    .callout:nth-child(3) { animation: callout-in-3 12s cubic-bezier(.2,.8,.3,1) infinite; }
-    .closing { position: absolute; z-index: 7; left: 96px; bottom: 104px; opacity: 0; animation: closing 12s linear infinite; }
-    .closing strong { display: block; font-size: 28px; line-height: 1.2; }
-    .closing span { display: block; margin-top: 8px; color: #526171; font-size: 16px; }
-    .watermark { position: absolute; z-index: 12; right: 34px; bottom: 27px; color: rgba(23,35,49,.46); font: 11px/1 ui-monospace, Consolas, monospace; letter-spacing: .15em; }
-    .preview *, .preview *::before, .preview *::after { animation-delay: calc(var(--preview-time) * -1s) !important; animation-play-state: paused !important; }
-    @keyframes eyebrow { 0%,3% { opacity: 0; transform: translateY(-8px); } 8%,22% { opacity: 1; transform: translateY(0); } 25%,100% { opacity: 0; } }
-    @keyframes headline { 0%,4% { opacity: 0; transform: translateY(14px); } 10%,22% { opacity: 1; transform: translateY(0); } 25%,100% { opacity: 0; } }
-    @keyframes screen { 0%,20% { transform: scale(.94); } 29%,44% { transform: scale(1.03) translate(7px, 1px); } 50%,71% { transform: scale(1.01) translate(4px, 0); } 82%,100% { transform: scale(.94); } }
-    @keyframes veil { 0%,19% { opacity: 0; } 24%,44% { opacity: 1; } 48%,100% { opacity: 0; } }
-    @keyframes focus { 0%,20% { opacity: 0; transform: scale(.94); } 24%,42% { opacity: 1; transform: scale(1); } 45%,100% { opacity: 0; transform: scale(1.02); } }
-    @keyframes pointer { 0%,18% { opacity: 0; transform: translate(0,0) scale(1); } 20% { opacity: 1; transform: translate(0,0) scale(1); } 27% { opacity: 1; transform: translate(-183px,-348px) scale(1); } 29% { opacity: 1; transform: translate(-183px,-348px) scale(.86); } 31%,43% { opacity: 1; transform: translate(-183px,-348px) scale(1); } 46%,100% { opacity: 0; transform: translate(-183px,-348px) scale(1); } }
-    @keyframes ripple { 0%,28% { opacity: 0; transform: translate(-50%,-50%) scale(.3); } 29% { opacity: .82; } 33% { opacity: 0; transform: translate(-50%,-50%) scale(4.2); } 100% { opacity: 0; } }
-    @keyframes project-card { 0%,31% { opacity: 0; transform: translateY(-12px) scale(.98); } 35%,43% { opacity: 1; transform: translateY(0) scale(1); } 47%,100% { opacity: 0; transform: translateY(-4px) scale(.99); } }
-    @keyframes callouts { 0%,47% { opacity: 0; } 51%,73% { opacity: 1; } 77%,100% { opacity: 0; } }
-    @keyframes callout-in { 0%,50% { transform: translateY(12px); } 54%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
-    @keyframes callout-in-2 { 0%,53% { transform: translateY(12px); } 57%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
-    @keyframes callout-in-3 { 0%,56% { transform: translateY(12px); } 60%,73% { transform: translateY(0); } 100% { transform: translateY(12px); } }
-    @keyframes closing { 0%,77% { opacity: 0; transform: translateY(10px); } 82%,100% { opacity: 1; transform: translateY(0); } }
-    @media (max-width: 1920px), (max-height: 1080px) { .frame { transform: scale(min(calc(100vw / 1920), calc(100vh / 1080))); transform-origin: center; } }
+    #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; isolation: isolate; color: #172331; background: #f6f5f2; }
+    #grid { position: absolute; inset: 0; opacity: .48; background-image: linear-gradient(rgba(26,39,53,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(26,39,53,.055) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(to bottom, rgba(0,0,0,.68), transparent 76%); }
+    #viewport { position: absolute; inset: 0; overflow: hidden; }
+    #camera { position: absolute; inset: 0; }
+    #world { position: absolute; inset: 0; transform-origin: 0 0; will-change: transform; }
+    .app { position: absolute; left: 310px; top: 108px; width: 1300px; height: 870px; overflow: hidden; border: 1px solid #d2d8df; border-radius: 13px; background: #fff; box-shadow: 0 38px 78px rgba(28,43,57,.16), 0 8px 18px rgba(28,43,57,.10); }
+    .app img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
+    #appPlan { opacity: 0; }
+    #veil { position: absolute; inset: 0; background: rgba(20,31,45,.12); opacity: 0; pointer-events: none; }
+    .focus { position: absolute; border: 3px solid #1b2b3d; border-radius: 14px; opacity: 0; box-shadow: 0 0 0 8px rgba(255,255,255,.88), 0 0 0 10px rgba(32,52,70,.12), 0 18px 34px rgba(26,39,53,.15); }
+    #focusPrompt { left: 1057px; top: 207px; width: 329px; height: 58px; }
+    #focusPlan { left: 1037px; top: 493px; width: 366px; height: 288px; }
+    #focusPolicy { left: 842px; top: 786px; width: 155px; height: 42px; }
+    #hud { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+    #brand { position: absolute; top: 74px; left: 94px; display: flex; align-items: center; gap: 12px; color: #526171; font-size: 15px; font-weight: 750; letter-spacing: .16em; }
+    #brand .dot { width: 14px; height: 14px; border: 3px solid #182638; border-radius: 50%; box-shadow: 5px 0 0 -2px #c94e34; }
+    #chapter { position: absolute; left: 72px; top: 108px; width: 500px; padding: 22px 22px 20px; border-radius: 16px; background: linear-gradient(90deg, rgba(246,245,242,.97), rgba(246,245,242,.92)); box-shadow: 0 14px 34px rgba(30,43,55,.05); }
+    #chapter .kicker { display: block; margin-bottom: 13px; color: #687888; font: 700 14px/1 ui-monospace, Consolas, monospace; letter-spacing: .14em; }
+    #chapter h1 { margin: 0; max-width: 470px; font-size: 48px; line-height: 1.12; letter-spacing: -.035em; }
+    #chapter p { margin: 16px 0 0; max-width: 350px; color: #586a7c; font-size: 18px; line-height: 1.55; }
+    #note { position: absolute; top: 660px; left: 94px; width: 338px; padding: 18px 20px 17px; border: 1px solid #d2d9e0; border-radius: 12px; background: rgba(255,255,255,.94); box-shadow: 0 16px 34px rgba(30,43,55,.09); }
+    #note b { display: block; margin-bottom: 6px; color: #1d2c3c; font-size: 17px; }
+    #note span { display: block; color: #5c6e80; font-size: 14px; line-height: 1.5; }
+    #proof { position: absolute; top: 100px; right: 92px; width: 280px; padding: 15px 18px; border: 1px solid #d2d9e0; border-radius: 11px; background: rgba(255,255,255,.94); box-shadow: 0 14px 30px rgba(30,43,55,.09); }
+    #proof b { display: block; margin-bottom: 5px; font-size: 15px; }
+    #proof span { color: #5c6e80; font-size: 13px; line-height: 1.45; }
+    #watermark { position: absolute; right: 34px; bottom: 27px; color: rgba(23,35,49,.46); font: 11px/1 ui-monospace, Consolas, monospace; letter-spacing: .15em; }
+    @media (max-width: 1920px), (max-height: 1080px) { #stage { transform: scale(min(calc(100vw / 1920), calc(100vh / 1080))); transform-origin: center; } }
   </style>
 </head>
 <body>
-  <main class="frame" aria-label="Apple Pi GitHub workflow demo">
-    <div class="grid" aria-hidden="true"></div>
-    <div class="eyebrow"><img src="../../app/renderer/assets/app-icon-rounded.png" alt="">APPLE PI</div>
-    <h1 class="headline">桌面端 AI 编程 Agent</h1>
-    <p class="subhead">从项目会话开始，在同一个工作区完成对话、工具调用和项目操作。</p>
-    <section class="app-shot" aria-label="Apple Pi isolated application screenshot"><img src="apple-pi-main.png" alt="Apple Pi application interface"></section>
-    <div class="veil" aria-hidden="true"></div>
-    <div class="focus" aria-hidden="true"></div>
-    <div class="pointer" aria-hidden="true"></div>
-    <div class="ripple" aria-hidden="true"></div><div class="ripple second" aria-hidden="true"></div>
-    <aside class="project-card"><strong>从项目开始</strong><span>对话与当前文件夹保持关联</span></aside>
-    <aside class="callouts" aria-label="Product capability callouts">
-      <div class="callout"><b>01</b>项目对话<small>让任务、文件夹与历史保持清晰归类</small></div>
-      <div class="callout"><b>02</b>模型与执行<small>按当前任务选择模型、推理与权限模式</small></div>
-      <div class="callout"><b>03</b>工作台<small>在一个窗口内进入改动审查、浏览器与终端</small></div>
-    </aside>
-    <div class="closing"><strong>开始构建。</strong><span>项目、模型与工具，都在一个桌面工作区中。</span></div>
-    <div class="watermark">Created by Huashu-Design</div>
+  <main id="stage" aria-label="Apple Pi task-to-plan workflow demo">
+    <div id="grid" aria-hidden="true"></div>
+    <div id="viewport"><div id="camera"><div id="world">
+      <section class="app" aria-label="Apple Pi isolated application screenshot">
+        <img id="appMain" src="apple-pi-main.png" alt="Apple Pi complete desktop interface with a generated plan">
+        <img id="appPlan" src="apple-pi-workbench.png" alt="Apple Pi planning policy menu in the complete desktop interface">
+      </section>
+      <div id="veil" aria-hidden="true"></div>
+      <div id="focusPrompt" class="focus" aria-hidden="true"></div>
+      <div id="focusPlan" class="focus" aria-hidden="true"></div>
+      <div id="focusPolicy" class="focus" aria-hidden="true"></div>
+    </div></div></div>
+    <section id="hud" aria-live="off">
+      <div id="brand"><i class="dot" aria-hidden="true"></i>APPLE PI</div>
+      <div id="chapter"><span class="kicker"></span><h1></h1><p></p></div>
+      <div id="note"><b></b><span></span></div>
+      <div id="proof"><b></b><span></span></div>
+      <div id="watermark">Created by Huashu-Design</div>
+    </section>
   </main>
   <script>
-    const previewTime = Number(new URLSearchParams(location.search).get("preview"));
-    if (Number.isFinite(previewTime)) {
-      document.documentElement.classList.add("preview");
-      document.documentElement.style.setProperty("--preview-time", String(Math.max(0, Math.min(12, previewTime))));
-    }
-    document.fonts.ready.then(() => requestAnimationFrame(() => { window.__ready = true; }));
+    (() => {
+      const DURATION = 15;
+      const world = document.querySelector('#world');
+      const veil = document.querySelector('#veil');
+      const appMain = document.querySelector('#appMain');
+      const appPlan = document.querySelector('#appPlan');
+      const focusPrompt = document.querySelector('#focusPrompt');
+      const focusPlan = document.querySelector('#focusPlan');
+      const focusPolicy = document.querySelector('#focusPolicy');
+      const kicker = document.querySelector('#chapter .kicker');
+      const heading = document.querySelector('#chapter h1');
+      const paragraph = document.querySelector('#chapter p');
+      const noteTitle = document.querySelector('#note b');
+      const noteText = document.querySelector('#note span');
+      const proofTitle = document.querySelector('#proof b');
+      const proofText = document.querySelector('#proof span');
+      const hudParts = [document.querySelector('#brand'), document.querySelector('#chapter'), document.querySelector('#note'), document.querySelector('#proof')];
+
+      const clamp = (n, a = 0, b = 1) => Math.min(b, Math.max(a, n));
+      const smooth = n => { n = clamp(n); return n * n * (3 - 2 * n); };
+      const phase = (t, a, b) => smooth((t - a) / (b - a));
+      const appear = (t, a, b, outA, outB) => phase(t, a, b) * (1 - phase(t, outA, outB));
+      const lerp = (a, b, p) => a + (b - a) * p;
+      const camera = (cx, cy, zoom) => {
+        world.style.transform = `translate(${960 - cx * zoom}px, ${540 - cy * zoom}px) scale(${zoom})`;
+      };
+      const text = (scene) => {
+        kicker.textContent = scene.kicker;
+        heading.textContent = scene.heading;
+        paragraph.textContent = scene.body;
+        noteTitle.textContent = scene.noteTitle;
+        noteText.textContent = scene.noteText;
+        proofTitle.textContent = scene.proofTitle;
+        proofText.textContent = scene.proofText;
+      };
+      const setFocus = (el, opacity, scale = 1) => { el.style.opacity = opacity; el.style.transform = `scale(${scale})`; };
+      const setHud = (opacity, y = 0) => hudParts.forEach(el => { el.style.opacity = opacity; el.style.transform = `translateY(${y}px)`; });
+
+      function render(input) {
+        const t = clamp(Number(input) || 0, 0, DURATION - 0.001);
+        let cx = 960, cy = 540, zoom = .80;
+        let hudOpacity = 0, hudY = 14;
+        let promptOpacity = 0, planOpacity = 0, policyOpacity = 0;
+        let planShotOpacity = 0;
+        let scene;
+
+        if (t < 3.2) {
+          const p = phase(t, 0, 1.15);
+          cx = 960; cy = 540; zoom = lerp(.74, .80, phase(t, 0, 2.2));
+          hudOpacity = p * (1 - phase(t, 2.65, 3.2)); hudY = lerp(15, 0, p);
+          scene = {
+            kicker: 'DESKTOP AGENT WORKSPACE', heading: '不是多一个聊天框。', body: '项目、任务、计划与执行边界，在同一个桌面工作区内可见。',
+            noteTitle: '完整界面，而非欢迎页', noteText: '真实隔离实例：任务已经得到计划，界面仍保留完整上下文。',
+            proofTitle: '全景', proofText: '先建立项目、会话与当前任务的关系。'
+          };
+        } else if (t < 6.35) {
+          const p = phase(t, 3.2, 4.1);
+          cx = lerp(960, 1140, p); cy = lerp(540, 242, p); zoom = lerp(.80, 1.16, p);
+          hudOpacity = appear(t, 3.5, 4.0, 5.82, 6.3); hudY = lerp(12, 0, phase(t, 3.45, 4.0));
+          promptOpacity = appear(t, 3.85, 4.28, 5.72, 6.2);
+          veil.style.opacity = .12 * promptOpacity;
+          scene = {
+            kicker: '01 / TASK', heading: '先把目标说清楚。', body: '任务保留在项目会话中，而不是散落在一个没有上下文的聊天窗口。',
+            noteTitle: '可追溯的任务入口', noteText: '真实请求：先生成完整执行计划，暂不修改文件。',
+            proofTitle: '任务上下文', proofText: '项目、会话和运行状态在侧栏清晰归档。'
+          };
+        } else if (t < 10.0) {
+          const p = phase(t, 6.25, 7.15);
+          cx = lerp(1140, 1210, p); cy = lerp(242, 645, p); zoom = lerp(1.16, 1.38, p);
+          hudOpacity = appear(t, 6.55, 7.0, 9.45, 10.0); hudY = lerp(12, 0, phase(t, 6.5, 7.0));
+          planOpacity = appear(t, 6.95, 7.35, 9.36, 9.9);
+          veil.style.opacity = .13 * planOpacity;
+          scene = {
+            kicker: '02 / PLAN', heading: '先看见计划，再决定执行。', body: '计划列表把目标、审阅、实现、验证和复核拆成可确认的步骤。',
+            noteTitle: '计划独立于执行', noteText: '这里显示“待确认”，意味着计划已经可审阅，尚未开始修改。',
+            proofTitle: '6 个步骤', proofText: '把长任务从“直接行动”变成可检查的过程。'
+          };
+        } else if (t < 12.55) {
+          const p = phase(t, 10.0, 10.72);
+          cx = lerp(1210, 915, p); cy = lerp(645, 795, p); zoom = lerp(1.38, 1.34, p);
+          hudOpacity = appear(t, 10.22, 10.66, 12.02, 12.48); hudY = lerp(12, 0, phase(t, 10.18, 10.66));
+          policyOpacity = appear(t, 10.5, 10.86, 11.92, 12.4);
+          planShotOpacity = phase(t, 10.3, 10.82) * (1 - phase(t, 12.05, 12.45));
+          veil.style.opacity = .09 * policyOpacity;
+          scene = {
+            kicker: '03 / POLICY', heading: '规划策略，由任务决定。', body: '明确规划、智能规划、总是规划三种策略，让长任务不再依赖临时提示。',
+            noteTitle: '智能规划', noteText: '复杂任务或明确要求时创建计划；执行权限仍由独立控件决定。',
+            proofTitle: '可见且可选', proofText: '真实展开菜单，不是用图形重新绘制的界面。'
+          };
+        } else {
+          const p = phase(t, 12.45, 13.15);
+          cx = lerp(915, 960, p); cy = lerp(795, 540, p); zoom = lerp(1.34, .80, p);
+          hudOpacity = phase(t, 12.65, 13.1); hudY = lerp(14, 0, hudOpacity);
+          veil.style.opacity = 0;
+          scene = {
+            kicker: 'APPLE PI / CONTROLLED WORKFLOW', heading: '让 Agent 的行动可见、可控、可回看。', body: '从项目对话开始，以计划和权限为边界，再进入工具调用与实现。',
+            noteTitle: '一个桌面工作区', noteText: '不是替代开发工具，而是把 Agent 的上下文与决策过程放回工作流。',
+            proofTitle: '完整演示结束', proofText: 'README 继续展示完整界面和功能维度对比。'
+          };
+        }
+
+        camera(cx, cy, zoom);
+        text(scene);
+        setHud(hudOpacity, hudY);
+        appMain.style.opacity = 1 - planShotOpacity;
+        appPlan.style.opacity = planShotOpacity;
+        setFocus(focusPrompt, promptOpacity, 1 + .018 * Math.sin(t * 7));
+        setFocus(focusPlan, planOpacity, 1 + .012 * Math.sin(t * 7));
+        setFocus(focusPolicy, policyOpacity, 1 + .014 * Math.sin(t * 7));
+        if (t < 3.2 || t >= 12.55) veil.style.opacity = 0;
+      }
+
+      let time = 0;
+      let playing = false;
+      let lastTick = null;
+      function tick(now) {
+        if (lastTick === null) {
+          lastTick = now;
+          render(0);
+          window.__ready = true;
+          playing = true;
+          requestAnimationFrame(tick);
+          return;
+        }
+        const dt = (now - lastTick) / 1000;
+        lastTick = now;
+        if (playing) {
+          let next = time + dt;
+          if (next >= DURATION) next = window.__recording ? DURATION - .001 : 0;
+          time = next;
+          render(time);
+        }
+        requestAnimationFrame(tick);
+      }
+      window.__seek = value => { time = clamp(Number(value) || 0, 0, DURATION - .001); render(time); };
+      const previewParam = new URLSearchParams(location.search).get('preview');
+      const preview = previewParam === null ? NaN : Number(previewParam);
+      document.fonts.ready.then(() => {
+        if (Number.isFinite(preview)) { window.__seek(preview); window.__ready = true; return; }
+        requestAnimationFrame(tick);
+      });
+    })();
   </script>
 </body>
 </html>

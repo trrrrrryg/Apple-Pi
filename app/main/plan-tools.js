@@ -9,7 +9,7 @@ function newId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function normalizeItems(items) {
+export function normalizePlanItems(items) {
   if (!Array.isArray(items)) return [];
   const seen = new Set();
   return items.flatMap((item) => {
@@ -19,6 +19,22 @@ function normalizeItems(items) {
     seen.add(key);
     return [{ id: newId("plan-item"), text }];
   }).slice(0, MAX_ITEMS);
+}
+
+/** Build the renderer-compatible plan shape used by host-created drafts and model tools. */
+export function createStructuredPlan(items, { status = "active" } = {}) {
+  const normalizedItems = normalizePlanItems(items);
+  if (normalizedItems.length < 2) throw new Error("计划至少需要两项不同的可执行任务");
+  const now = Date.now();
+  return {
+    id: newId("plan"), schemaVersion: 2, version: 1, status,
+    createdAt: now, updatedAt: now,
+    items: normalizedItems.map((item) => ({
+      ...item, status: "pending", dependsOn: [], startedAt: null, completedAt: null,
+      evidence: [], toolCallIds: [], turnIds: [], blockedReason: null,
+    })),
+    history: [],
+  };
 }
 
 function asResult(payload) {
@@ -36,10 +52,10 @@ export function createPlanTools(emitUpdate) {
     defineTool({
       name: "plan_create",
       label: "创建执行计划",
-      description: "Create a structured plan for a substantial task. Use only in PLAN mode after analyzing the request. Do not use it for simple questions or single small edits.",
+      description: "Create a structured plan when the user explicitly asks for one or the application requires planning for a substantial task. This tool does not modify project files.",
       promptSnippet: "plan_create - 创建可追踪的执行计划",
       promptGuidelines: [
-        "复杂、长线或多阶段任务在 PLAN 模式下必须调用 plan_create 创建 2 到 8 项计划。",
+        "当用户明确要求计划，或应用要求先规划时，使用 plan_create 创建 2 到 8 项计划；它可在任意执行权限下安全调用。",
         "每项必须是可独立验证的动作，不要把多个结果塞进同一项。",
         "简单任务不要创建计划。",
       ],
@@ -50,17 +66,7 @@ export function createPlanTools(emitUpdate) {
         }), { minItems: 2, maxItems: MAX_ITEMS }),
       }),
       execute: async (toolCallId, params) => {
-        const items = normalizeItems(params.items);
-        if (items.length < 2) throw new Error("计划至少需要两项不同的可执行任务");
-        const plan = {
-          id: newId("plan"), schemaVersion: 2, version: 1, status: "active",
-          createdAt: Date.now(), updatedAt: Date.now(),
-          items: items.map((item) => ({
-            ...item, status: "pending", dependsOn: [], startedAt: null, completedAt: null,
-            evidence: [], toolCallIds: [], turnIds: [], blockedReason: null,
-          })),
-          history: [],
-        };
+        const plan = createStructuredPlan(params.items);
         emit({ action: "create", plan, toolCallId });
         return asResult({ ok: true, planId: plan.id, items: plan.items.map(({ id, text }) => ({ id, text })) });
       },
@@ -100,7 +106,7 @@ export function createPlanTools(emitUpdate) {
       description: "Replace the remaining plan when requirements or discovered constraints materially change. Preserve completed work where possible and explain why the plan changed.",
       promptSnippet: "plan_replan - 重新规划剩余工作",
       promptGuidelines: [
-        "仅在需求变化、发现新约束或原计划无法继续时调用 plan_replan。",
+        "当应用已经预先创建草稿计划时，先使用 plan_replan 将其细化为本任务的真实步骤；其他情况下仅在需求变化、发现新约束或原计划无法继续时调用。",
         "保留仍适用的已完成项目；不要因为普通工具成功或回复结束而重新规划。",
       ],
       executionMode: "serial",
@@ -112,7 +118,7 @@ export function createPlanTools(emitUpdate) {
         }), { minItems: 2, maxItems: MAX_ITEMS }),
       }),
       execute: async (toolCallId, params) => {
-        const items = normalizeItems(params.items);
+        const items = normalizePlanItems(params.items);
         if (items.length < 2) throw new Error("重新规划至少需要两项不同的可执行任务");
         emit({ action: "replan", planId: params.planId, items, reason: params.reason.trim(), toolCallId, updatedAt: Date.now() });
         return asResult({ ok: true, planId: params.planId, action: "replan", items });

@@ -389,6 +389,12 @@ function setupIpc() {
     return agentService.listConfiguredProviders();
   });
 
+  ipcMain.handle("agent:loginOpenAICodex", async () => agentService.loginOpenAICodex());
+  ipcMain.handle("agent:submitOpenAICodexCallback", async (_e, { value } = {}) => {
+    return agentService.submitOpenAICodexCallback(value);
+  });
+  ipcMain.handle("agent:cancelOpenAICodexLogin", async () => agentService.cancelOpenAICodexLogin());
+
   ipcMain.handle("agent:listCustomProviders", async () => {
     return agentService.listCustomProviders();
   });
@@ -504,6 +510,8 @@ function setupIpc() {
 
   ipcMain.handle("agent:getExecutionMode", async () => agentService.getExecutionMode());
   ipcMain.handle("agent:setExecutionMode", async (_e, { mode }) => agentService.setExecutionMode(mode));
+  ipcMain.handle("agent:getPlanPolicy", async () => agentService.getPlanPolicy());
+  ipcMain.handle("agent:setPlanPolicy", async (_e, { policy }) => agentService.setPlanPolicy(policy));
   ipcMain.handle("agent:resolveToolApproval", async (_e, { approvalId, approved }) => {
     return agentService.resolveToolApproval(approvalId, approved === true);
   });

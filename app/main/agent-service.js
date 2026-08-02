@@ -19,7 +19,8 @@ import { createMermaidDiagramTool } from "./mermaid-diagram.js";
 import { IntegrationService, createSkillTools } from "./integration-service.js";
 import { McpRuntime } from "./mcp-runtime.js";
 import { createBrowserAutomationTools } from "./browser-automation-tools.js";
-import { createPlanTools, isPlanTool } from "./plan-tools.js";
+import { createPlanTools, createStructuredPlan, isPlanTool } from "./plan-tools.js";
+import { PLAN_POLICIES, classifyPlanIntent, createDraftPlanItems, isPlanOnlyIntent } from "./plan-policy.js";
 import { detectLocalModelRuntimes } from "./local-model-service.js";
 import { resolveProjectFileReference } from "./project-file-resolver.js";
 import { extractSessionEvents, historyFromMessages, historyFromSessionEvents } from "./session-history.js";
@@ -68,11 +69,12 @@ const MODEL_MULTIMODAL_FILE = "model-multimodal.json";
 const MODEL_CONTEXT_WINDOWS_FILE = "model-context-windows.json";
 const MERMAID_DIAGRAM_SETTINGS_FILE = "mermaid-diagram.json";
 const EXECUTION_MODE_SETTINGS_FILE = "execution-mode.json";
+const PLAN_POLICY_SETTINGS_FILE = "plan-policy.json";
 const PI_MODEL_DATA_DIR = path.resolve(__dirname, "../node_modules/@earendil-works/pi-ai/dist/providers/data");
 const THINKING_LEVELS = new Set(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const EXECUTION_MODES = new Set(["read-only", "ask", "auto"]);
 const LEGACY_PLAN_EXECUTION_MODE = "plan";
-const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "list", "ls", "glob", "web_search", "tavily_search", "create_mermaid_diagram"]);
+const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "list", "ls", "glob", "web_search", "tavily_search", "create_mermaid_diagram", "browser_inspect"]);
 const WRITE_OR_EXECUTE_TOOL_PATTERN = /(^|[_:-])(write|edit|patch|delete|remove|move|rename|mkdir|exec|bash|shell|terminal|command|install|git|run)([_:-]|$)/i;
 const CUSTOM_PROVIDER_APIS = new Set(["openai-completions", "openai-responses", "anthropic-messages", "google-generative-ai"]);
 const DEFAULT_CONTEXT_WINDOW = 256 * 1024;
@@ -101,34 +103,18 @@ const TEXT_OUTPUT_CONSTRAINT = [
   "</pi-system-instruction>",
 ].join("");
 
-const AUTO_EXECUTION_PLAN_CONSTRAINT = [
-  "\n\n<apple-pi-auto-plan-mode>",
-  "Execution mode: AUTO. This request has been classified as substantial, long-running, or multi-phase.",
-  "Before any file modification, command execution, or other implementation tool, call the internal plan_create tool exactly once with 2 to 8 independently verifiable items.",
-  "A request for a plan is not a request to pause. After plan_create succeeds, immediately begin executing the plan with the available tools; never wait for user confirmation or stop after creating the plan.",
-  "Before working on each item call plan_update with action=start. Call action=complete only after verification and include concise evidence. Use action=block or action=skip with a reason when appropriate.",
-  "If requirements or discovered constraints materially change, use plan_replan and explain the reason. Do not output plan XML, JSON, Markdown task lists, or hidden envelopes in the visible reply.",
-  "</apple-pi-auto-plan-mode>",
-].join("");
-
-// Keep automatic planning limited to long-horizon work without forcing a todo
-// list onto every message. This intentionally favors false negatives over noise.
-function shouldOfferPlan(text) {
-  const value = String(text ?? "").replace(/\s+/g, " ").trim();
-  if (!value) return false;
-  const lower = value.toLowerCase();
-  const explicitPlan = /(?:\u8ba1\u5212|\u89c4\u5212|\u62c6\u89e3|\u5f85\u529e|\u4efb\u52a1\u5217\u8868|\u8def\u7ebf\u56fe|\u5206\u6b65\u9aa4|\u957f\u671f|\u957f\u7ebf|\u591a\u6b65|(?:\u5236\u5b9a|\u8bbe\u8ba1|\u751f\u6210)\u65b9\u6848|\bplan\b|\btodo\b|\broadmap\b|break\s+down|step[- ]by[- ]step)/i.test(lower);
-  if (explicitPlan) return true;
-  if (value.length < 10) return false;
-
-  const implementation = /(?:\u521b\u5efa|\u5236\u4f5c|\u5f00\u53d1|\u5b9e\u73b0|\u91cd\u6784|\u8fc1\u79fb|\u90e8\u7f72|\u4f18\u5316|\u4fee\u590d|\u8bbe\u8ba1|\u6784\u5efa|\bbuild\b|\bcreate\b|\bdevelop\b|\bimplement\b|\brefactor\b|\bmigrate\b|\bdeploy\b|\boptimi[sz]e\b|\brepair\b|\bdesign\b)/i.test(lower);
-  const artifact = /(?:\u9879\u76ee|\u8f6f\u4ef6|\u5e94\u7528|\u7f51\u7ad9|\u524d\u7aef|\u540e\u7aef|\u7cfb\u7edf|\u6a21\u5757|\u529f\u80fd|\u6570\u636e\u5e93|\u63a5\u53e3|\u670d\u52a1|\u5b8c\u6574|\bproject\b|\bapp\b|\bsoftware\b|\bwebsite\b|\bfrontend\b|\bbackend\b|\bsystem\b|\bmodule\b|\bfeature\b|\bdatabase\b|\bapi\b)/i.test(lower);
-  const multiPhase = /(?:\u5e76\u4e14|\u540c\u65f6|\u7136\u540e|\u4ee5\u53ca|\u5305\u62ec|\u5206\u522b|\u5404\u81ea|\u591a\u4e2a|\u591a\u9879|\u7b2c\u4e00|\u7b2c\u4e8c|\u7b2c\u4e09|\band\b|\balso\b|\bthen\b|\bafter\b|\binclude\b|\bmultiple\b|\bfirst\b.*\bthen\b)/i.test(lower);
-  const delivery = /(?:\u6d4b\u8bd5|\u9a8c\u8bc1|\u6253\u5305|\u53d1\u5e03|\u90e8\u7f72|\u4ea4\u4ed8|\u68c0\u67e5|\u786e\u8ba4|\btest\b|\bvalidate\b|\bpackage\b|\bpublish\b|\bship\b|\brelease\b)/i.test(lower);
-  const numbered = /(?:^|\s)(?:\d+[.)]|[-*])\s+/.test(value);
-  const largeScope = /(?:\u5b8c\u6574|\u5168\u5957|\u4ece\u96f6|\u5168\u6d41\u7a0b|\u751f\u4ea7\u7ea7|\bcomplete\b|\bfull\b|\bend[- ]to[- ]end\b|\bproduction\b)/i.test(lower);
-  const score = [implementation, artifact, multiPhase, delivery, numbered].filter(Boolean).length;
-  return (score >= 2 && value.length >= 36) || (score >= 2 && largeScope && value.length >= 10) || (score >= 3 && value.length >= 18);
+function createPlanConstraint(plan, intent) {
+  const planOnly = isPlanOnlyIntent(intent);
+  return [
+    "\n\n<apple-pi-plan-required>",
+    "当前任务必须维护结构化计划。宿主已先创建草稿计划，计划 ID：" + plan.id + "。",
+    "在调用任何修改文件、执行命令、安装依赖、发布部署或其他实现工具前，先调用 plan_replan，并使用该计划 ID 将草稿替换为 2 到 8 项面向当前任务、可独立验证的步骤。",
+    "细化后，开始每个步骤前调用 plan_update action=start；验证完成后调用 action=complete 并提供证据；阻塞或跳过时写明原因。",
+    planOnly
+      ? "用户本轮只要求计划或方案：请细化计划并说明结果，不要修改文件、执行命令、安装依赖、发布或部署。"
+      : "完成计划细化后，是否执行后续变更必须遵守当前执行权限；不要把计划写成正文 Markdown、JSON 或 XML。",
+    "</apple-pi-plan-required>",
+  ].join("\n");
 }
 
 function escapeFileName(value) {
@@ -144,7 +130,7 @@ function stripPromptSuffixes(text) {
     .replace(MERMAID_PROMPT_SUFFIX, "")
     .replace(MERMAID_CODE_SUFFIX, "")
     .replace(TEXT_OUTPUT_CONSTRAINT, "")
-    .replace(AUTO_EXECUTION_PLAN_CONSTRAINT, "");
+    .replace(/\n*<apple-pi-plan-required>[\s\S]*?<\/apple-pi-plan-required>/g, "");
 }
 
 function publicCustomProvider(provider) {
@@ -247,7 +233,13 @@ export class AgentService {
     this._abortRequested = false;
     this.executionMode = "ask";
     this.executionModeLoaded = false;
+    this.planPolicy = "smart";
+    this.planPolicyLoaded = false;
+    this._activePlanGate = null;
     this.pendingApprovals = new Map();
+    // OAuth 登录是一个需要浏览器跳转、回调和可选手动粘贴的短生命周期流程。
+    // 只允许同时进行一个，避免两个授权窗口争抢同一个 localhost 回调端口。
+    this.openAICodexLogin = null;
     this.runBrowserAutomation = runBrowserAutomation;
     this.sessionRoot = path.join(app.getPath("userData"), "sessions");
     this.sessionTrashRoot = path.join(app.getPath("userData"), "session-trash");
@@ -281,6 +273,10 @@ export class AgentService {
     return path.join(app.getPath("userData"), EXECUTION_MODE_SETTINGS_FILE);
   }
 
+  _getPlanPolicyPath() {
+    return path.join(app.getPath("userData"), PLAN_POLICY_SETTINGS_FILE);
+  }
+
   async _ensureExecutionMode() {
     if (this.executionModeLoaded) return;
     this.executionModeLoaded = true;
@@ -312,10 +308,80 @@ export class AgentService {
     return this.getExecutionMode();
   }
 
+  async _ensurePlanPolicy() {
+    if (this.planPolicyLoaded) return;
+    this.planPolicyLoaded = true;
+    try {
+      const saved = JSON.parse(await fs.readFile(this._getPlanPolicyPath(), "utf8"));
+      if (PLAN_POLICIES.has(saved?.policy)) this.planPolicy = saved.policy;
+    } catch (error) {
+      if (error?.code !== "ENOENT") console.warn("Unable to load plan policy:", error);
+    }
+  }
+
+  async getPlanPolicy() {
+    await this._ensurePlanPolicy();
+    return { policy: this.planPolicy };
+  }
+
+  async setPlanPolicy(policy) {
+    await this._ensurePlanPolicy();
+    if (!PLAN_POLICIES.has(policy)) throw new Error("不支持的计划策略");
+    this.planPolicy = policy;
+    await fs.writeFile(this._getPlanPolicyPath(), JSON.stringify({ policy }, null, 2), "utf8");
+    this.sendToRenderer("agent:state", this._snapshotState());
+    return this.getPlanPolicy();
+  }
+
   _isReadOnlyTool(name) {
     const normalized = String(name ?? "").toLowerCase();
     if (READ_ONLY_TOOLS.has(normalized)) return true;
     return /^(read|list|search|web_search|tavily|glob|grep|find)/i.test(normalized) && !WRITE_OR_EXECUTE_TOOL_PATTERN.test(normalized);
+  }
+
+  _handlePlanGate(context) {
+    const gate = this._activePlanGate;
+    if (!gate) return undefined;
+    const name = String(context?.toolCall?.name ?? "tool");
+    if (isPlanTool(name) || this._isReadOnlyTool(name)) return undefined;
+    if (gate.planOnly) {
+      return { block: true, reason: "用户本轮只要求生成计划或方案，不能执行修改、命令、安装、发布等操作。" };
+    }
+    if (!gate.refined) {
+      return { block: true, reason: `请先使用 plan_replan 细化计划 ${gate.planId}，然后再执行实现操作。` };
+    }
+    return undefined;
+  }
+
+  _emitPlanUpdate(update) {
+    this.sendToRenderer("agent:planUpdate", {
+      ...update,
+      sessionFile: this.getSessionInfo().sessionFile,
+    });
+  }
+
+  _beginPlanGate(intent) {
+    const plan = createStructuredPlan(createDraftPlanItems(), { status: "draft" });
+    plan.intent = isPlanOnlyIntent(intent) ? "plan_only" : "execution";
+    const gate = {
+      planId: plan.id,
+      refined: false,
+      planOnly: plan.intent === "plan_only",
+    };
+    this._activePlanGate = gate;
+    this._emitPlanUpdate({ action: "create", plan, source: "host", updatedAt: plan.updatedAt });
+    return { gate, plan };
+  }
+
+  _recordPlanTransition(update) {
+    const gate = this._activePlanGate;
+    if (!gate || !update) return;
+    if (update.action === "create" && update.plan?.id) {
+      gate.planId = update.plan.id;
+      gate.refined = update.plan.status !== "draft";
+    } else if (update.action === "replan" && update.planId === gate.planId) {
+      gate.refined = true;
+    }
   }
 
   async _handleToolApproval(context, signal) {
@@ -911,6 +977,124 @@ export class AgentService {
     return infos.map((c) => c.providerId ?? c.provider ?? c.id).filter(Boolean);
   }
 
+  _emitOpenAICodexLogin(state, detail = null) {
+    this.sendToRenderer("agent:openAICodexLogin", {
+      providerId: "openai-codex",
+      state,
+      detail: typeof detail === "string" && detail.trim() ? detail.trim().slice(0, 500) : null,
+    });
+  }
+
+  _waitForOpenAICodexManualCallback(prompt, signal) {
+    const activeLogin = this.openAICodexLogin;
+    if (!activeLogin) return Promise.reject(new Error("OpenAI Codex 登录已结束"));
+
+    this._emitOpenAICodexLogin("awaiting_callback", prompt?.message || "请在浏览器中完成登录。若未自动跳回，可粘贴回调链接。");
+    return new Promise((resolve, reject) => {
+      let settled = false;
+      let manualCallback = null;
+      const finish = (callback) => (value) => {
+        if (settled) return;
+        settled = true;
+        signal?.removeEventListener("abort", onAbort);
+        if (activeLogin.manualCallback === manualCallback) activeLogin.manualCallback = null;
+        callback(value);
+      };
+      const onAbort = () => finish(reject)(new Error("Login cancelled"));
+      manualCallback = {
+        resolve: finish(resolve),
+        reject: finish(reject),
+      };
+      activeLogin.manualCallback = manualCallback;
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
+      signal?.addEventListener("abort", onAbort, { once: true });
+    });
+  }
+
+  /**
+   * 使用 Pi 内置的 OpenAI Codex OAuth 流程登录 ChatGPT Plus/Pro。
+   * Pi 会启动 localhost 回调服务；浏览器完成授权后，凭证由 ModelRuntime
+   * 写入已有的 AuthStorage，渲染进程始终拿不到 token。
+   */
+  async loginOpenAICodex() {
+    if (this.openAICodexLogin) throw new Error("OpenAI Codex 正在登录，请先完成或取消当前授权");
+
+    const modelRuntime = await this._ensureRuntime();
+    const controller = new AbortController();
+    const login = { controller, manualCallback: null };
+    this.openAICodexLogin = login;
+    this._emitOpenAICodexLogin("starting", "正在准备 ChatGPT 授权…");
+
+    try {
+      // Do not call ModelRuntime.login here. It delegates to ModelsStore.login
+      // and then waits for an online refresh of every registered provider. The
+      // browser callback has already supplied and persisted the Codex OAuth
+      // credential at that point, so a slow or unreachable unrelated provider
+      // left the settings UI incorrectly stuck at “waiting for browser
+      // authorization”. Refresh locally, without network, only after login.
+      const credential = await modelRuntime.models.login("openai-codex", "oauth", {
+        signal: controller.signal,
+        prompt: async (prompt) => {
+          if (prompt?.type === "select") return "browser";
+          if (prompt?.type === "manual_code") {
+            // Pi cancels this signal as soon as its localhost listener receives
+            // the browser redirect. Using it also cleans up the optional manual
+            // callback promise instead of leaving it pending after success.
+            return this._waitForOpenAICodexManualCallback(prompt, prompt.signal ?? controller.signal);
+          }
+          throw new Error("OpenAI Codex 请求了当前界面不支持的登录步骤");
+        },
+        notify: (event) => {
+          if (event?.type === "auth_url") {
+            this._emitOpenAICodexLogin("browser_opened", "已在默认浏览器中打开 ChatGPT 登录页面。");
+            void shell.openExternal(event.url).catch((error) => {
+              this._emitOpenAICodexLogin("failed", `无法打开浏览器：${error?.message ?? error}`);
+            });
+          } else if (event?.type === "progress") {
+            this._emitOpenAICodexLogin("in_progress", event.message || "正在完成授权…");
+          } else if (event?.type === "info") {
+            this._emitOpenAICodexLogin("in_progress", event.message || "请按提示完成授权。");
+          }
+        },
+      });
+      await modelRuntime.refresh({ allowNetwork: false });
+      this._emitOpenAICodexLogin("completed", "ChatGPT 订阅已授权，可以选择 OpenAI Codex 模型。");
+      return { ok: true, accountId: typeof credential?.accountId === "string" ? credential.accountId : null };
+    } catch (error) {
+      const message = String(error?.message ?? error);
+      if (/login cancelled|abort/i.test(message)) {
+        this._emitOpenAICodexLogin("cancelled", "已取消 ChatGPT 授权。");
+        return { ok: false, cancelled: true };
+      }
+      this._emitOpenAICodexLogin("failed", message);
+      throw error;
+    } finally {
+      if (this.openAICodexLogin === login) this.openAICodexLogin = null;
+    }
+  }
+
+  submitOpenAICodexCallback(value) {
+    const callback = String(value ?? "").trim();
+    if (!callback) throw new Error("请粘贴浏览器地址栏中的完整回调链接或授权码");
+    if (callback.length > 16_000) throw new Error("回调内容过长");
+    const pending = this.openAICodexLogin?.manualCallback;
+    if (!pending) throw new Error("当前没有等待手动输入的 ChatGPT 授权");
+    pending.resolve(callback);
+    this._emitOpenAICodexLogin("exchanging", "正在验证授权信息…");
+    return { ok: true };
+  }
+
+  cancelOpenAICodexLogin() {
+    const login = this.openAICodexLogin;
+    if (!login) return { ok: false, stale: true };
+    login.controller.abort();
+    login.manualCallback?.reject(new Error("Login cancelled"));
+    return { ok: true };
+  }
+
   _getTavilySettingsPath() {
     return path.join(app.getPath("userData"), TAVILY_SETTINGS_FILE);
   }
@@ -1019,6 +1203,7 @@ export class AgentService {
   async createSession(opts = {}) {
     const t0 = Date.now();
     await this._ensureExecutionMode();
+    await this._ensurePlanPolicy();
     await this.disposeSession();
     const t1 = Date.now();
     const modelRuntime = await this._ensureRuntime();
@@ -1051,10 +1236,10 @@ export class AgentService {
 
     const tavilyTool = this._getCachedTavilyTool();
     const mermaidDiagramTool = this._getMermaidDiagramTool();
-    const planTools = createPlanTools((update) => this.sendToRenderer("agent:planUpdate", {
-      ...update,
-      sessionFile: this.getSessionInfo().sessionFile,
-    }));
+    const planTools = createPlanTools((update) => {
+      this._recordPlanTransition(update);
+      this._emitPlanUpdate(update);
+    });
     const browserAutomationTools = createBrowserAutomationTools(this.runBrowserAutomation);
     const { enabled: mermaidDiagramEnabled } = await this.getMermaidDiagramSettings();
     const createWithManager = (manager) => createAgentSession({
@@ -1102,6 +1287,8 @@ export class AgentService {
     session.agent.beforeToolCall = async (context, signal) => {
       const extensionResult = await extensionBeforeToolCall?.(context, signal);
       if (extensionResult?.block) return extensionResult;
+      const planResult = this._handlePlanGate(context);
+      if (planResult?.block) return planResult;
       return this._handleToolApproval(context, signal);
     };
 
@@ -1156,21 +1343,31 @@ export class AgentService {
 
     this._abortRequested = false;
     const run = (async () => {
-      const { fileText, images } = await this._prepareAttachments(filePaths);
-      if (this._abortRequested) return;
+      let planGate = null;
+      try {
+        const { fileText, images } = await this._prepareAttachments(filePaths);
+        if (this._abortRequested) return;
 
-      const userText = text?.trim() || "";
-      const promptText = [userText, fileText].filter(Boolean).join("\n\n") || "请查看所附文件。";
-      const { enabled: mermaidDiagramEnabled } = await this.getMermaidDiagramSettings();
-      let enforcedPrompt = requiresMermaidDiagram(userText)
-        ? `${promptText}${mermaidDiagramEnabled ? MERMAID_PROMPT_SUFFIX : MERMAID_CODE_SUFFIX}`
-        : promptText;
-      // 始终注入正文输出约束，防止模型只输出思考内容
-      enforcedPrompt = `${enforcedPrompt}${TEXT_OUTPUT_CONSTRAINT}`;
-      if (this.executionMode === "auto" && shouldOfferPlan(userText)) {
-        enforcedPrompt = `${enforcedPrompt}${AUTO_EXECUTION_PLAN_CONSTRAINT}`;
+        await this._ensurePlanPolicy();
+        const userText = text?.trim() || "";
+        const promptText = [userText, fileText].filter(Boolean).join("\n\n") || "请查看所附文件。";
+        const { enabled: mermaidDiagramEnabled } = await this.getMermaidDiagramSettings();
+        let enforcedPrompt = requiresMermaidDiagram(userText)
+          ? `${promptText}${mermaidDiagramEnabled ? MERMAID_PROMPT_SUFFIX : MERMAID_CODE_SUFFIX}`
+          : promptText;
+        // 始终注入正文输出约束，防止模型只输出思考内容
+        enforcedPrompt = `${enforcedPrompt}${TEXT_OUTPUT_CONSTRAINT}`;
+
+        const planIntent = classifyPlanIntent(userText, this.planPolicy);
+        if (planIntent.shouldPlan) {
+          const started = this._beginPlanGate(planIntent);
+          planGate = started.gate;
+          enforcedPrompt = `${enforcedPrompt}${createPlanConstraint(started.plan, planIntent)}`;
+        }
+        await this.session.prompt(enforcedPrompt, { images: images.length > 0 ? images : undefined });
+      } finally {
+        if (planGate && this._activePlanGate === planGate) this._activePlanGate = null;
       }
-      await this.session.prompt(enforcedPrompt, { images: images.length > 0 ? images : undefined });
     })();
     this._activePrompt = run;
 
@@ -1363,6 +1560,7 @@ export class AgentService {
   }
 
   async dispose() {
+    this.cancelOpenAICodexLogin();
     await this.disposeSession();
     await this.mcpRuntime.closeAll();
   }
@@ -1385,6 +1583,7 @@ export class AgentService {
       messageCount: s.messages?.length ?? 0,
       pendingToolCalls: s.pendingToolCalls ? [...s.pendingToolCalls] : [],
       executionMode: this.executionMode,
+      planPolicy: this.planPolicy,
       contextUsage: this._getContextUsage(),
       errorMessage: s.errorMessage ?? null,
     };

@@ -173,7 +173,17 @@
               <div id="execution-mode-menu" class="execution-mode-menu" role="menu" aria-hidden="true">
                 <button type="button" data-execution-mode="read-only"><strong>只读</strong><small>只允许读取与搜索</small></button>
                 <button type="button" data-execution-mode="ask"><strong>每次确认</strong><small>危险操作逐项确认</small></button>
-                <button type="button" data-execution-mode="auto"><strong>自动执行</strong><small>复杂任务自动规划并执行</small></button>
+                <button type="button" data-execution-mode="auto"><strong>自动执行</strong><small>危险操作无需逐项确认</small></button>
+              </div>
+            </div>
+            <div id="plan-policy-wrap" class="plan-policy-wrap">
+              <button id="btn-plan-policy" class="plan-policy-btn" type="button" aria-haspopup="menu" aria-expanded="false" title="计划策略与执行权限相互独立">
+                <span class="plan-policy-icon" aria-hidden="true">▤</span><span id="plan-policy-label">智能规划</span><span class="model-drop-icon">▾</span>
+              </button>
+              <div id="plan-policy-menu" class="plan-policy-menu" role="menu" aria-hidden="true">
+                <button type="button" data-plan-policy="explicit"><strong>仅明确规划</strong><small>仅在你要求计划时创建</small></button>
+                <button type="button" data-plan-policy="smart"><strong>智能规划</strong><small>复杂任务或明确要求时创建</small></button>
+                <button type="button" data-plan-policy="always"><strong>总是规划</strong><small>每个执行任务都先建立计划</small></button>
               </div>
             </div>
             <div id="context-compression" class="context-compression" title="自动上下文压缩">
@@ -186,7 +196,7 @@
                 <span>计划列表</span><span id="plan-list-count" class="plan-list-count"></span>
               </button>
               <section id="plan-list-popover" class="plan-list-popover" role="dialog" aria-label="当前任务计划" aria-hidden="true">
-                <div class="plan-list-title">当前计划</div>
+                <div class="plan-list-title"><span>当前计划</span><span id="plan-list-status" class="plan-list-status"></span></div>
                 <div id="plan-list-items" class="plan-list-items"></div>
               </section>
             </div>

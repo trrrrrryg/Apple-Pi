@@ -14,6 +14,9 @@ const btnAttachment = $("#btn-attachment");
 const btnExecutionMode = $("#btn-execution-mode");
 const executionModeMenu = $("#execution-mode-menu");
 const executionModeLabel = $("#execution-mode-label");
+const btnPlanPolicy = $("#btn-plan-policy");
+const planPolicyMenu = $("#plan-policy-menu");
+const planPolicyLabel = $("#plan-policy-label");
 const contextCompression = $("#context-compression");
 const contextProgress = $("#context-progress");
 const contextSummary = $("#context-summary");
@@ -22,6 +25,7 @@ const btnPlanList = $("#btn-plan-list");
 const planListCount = $("#plan-list-count");
 const planListPopover = $("#plan-list-popover");
 const planListItems = $("#plan-list-items");
+const planListStatus = $("#plan-list-status");
 const btnChangeReview = $("#btn-change-review");
 const changeReviewPanel = $("#change-review-panel");
 const workbenchResizer = $("#workbench-resizer");
@@ -125,6 +129,7 @@ let tasks = [];
 let projects = [];
 let activeTaskId = null;
 let executionMode = "ask";
+let planPolicy = "smart";
 let pendingToolApproval = null;
 let updateDownloading = false;
 let updateBannerDismissed = false;
@@ -139,26 +144,6 @@ let currentContextTokens = null;
 const errorNoticeByKey = new Map();
 const retryNoticeByTask = new Map();
 const ERROR_DEDUPE_WINDOW_MS = 8000;
-
-// Mirror the main-process gate so the UI only creates a plan for substantial
-// work. Keep this local because the packaged renderer is loaded independently.
-function shouldOfferPlan(text) {
-  const value = String(text ?? "").replace(/\s+/g, " ").trim();
-  if (!value) return false;
-  const lower = value.toLowerCase();
-  const explicitPlan = /(?:\u8ba1\u5212|\u89c4\u5212|\u62c6\u89e3|\u5f85\u529e|\u4efb\u52a1\u5217\u8868|\u8def\u7ebf\u56fe|\u5206\u6b65\u9aa4|\u957f\u671f|\u957f\u7ebf|\u591a\u6b65|(?:\u5236\u5b9a|\u8bbe\u8ba1|\u751f\u6210)\u65b9\u6848|\bplan\b|\btodo\b|\broadmap\b|break\s+down|step[- ]by[- ]step)/i.test(lower);
-  if (explicitPlan) return true;
-  if (value.length < 10) return false;
-
-  const implementation = /(?:\u521b\u5efa|\u5236\u4f5c|\u5f00\u53d1|\u5b9e\u73b0|\u91cd\u6784|\u8fc1\u79fb|\u90e8\u7f72|\u4f18\u5316|\u4fee\u590d|\u8bbe\u8ba1|\u6784\u5efa|\bbuild\b|\bcreate\b|\bdevelop\b|\bimplement\b|\brefactor\b|\bmigrate\b|\bdeploy\b|\boptimi[sz]e\b|\brepair\b|\bdesign\b)/i.test(lower);
-  const artifact = /(?:\u9879\u76ee|\u8f6f\u4ef6|\u5e94\u7528|\u7f51\u7ad9|\u524d\u7aef|\u540e\u7aef|\u7cfb\u7edf|\u6a21\u5757|\u529f\u80fd|\u6570\u636e\u5e93|\u63a5\u53e3|\u670d\u52a1|\u5b8c\u6574|\bproject\b|\bapp\b|\bsoftware\b|\bwebsite\b|\bfrontend\b|\bbackend\b|\bsystem\b|\bmodule\b|\bfeature\b|\bdatabase\b|\bapi\b)/i.test(lower);
-  const multiPhase = /(?:\u5e76\u4e14|\u540c\u65f6|\u7136\u540e|\u4ee5\u53ca|\u5305\u62ec|\u5206\u522b|\u5404\u81ea|\u591a\u4e2a|\u591a\u9879|\u7b2c\u4e00|\u7b2c\u4e8c|\u7b2c\u4e09|\band\b|\balso\b|\bthen\b|\bafter\b|\binclude\b|\bmultiple\b|\bfirst\b.*\bthen\b)/i.test(lower);
-  const delivery = /(?:\u6d4b\u8bd5|\u9a8c\u8bc1|\u6253\u5305|\u53d1\u5e03|\u90e8\u7f72|\u4ea4\u4ed8|\u68c0\u67e5|\u786e\u8ba4|\btest\b|\bvalidate\b|\bpackage\b|\bpublish\b|\bship\b|\brelease\b)/i.test(lower);
-  const numbered = /(?:^|\s)(?:\d+[.)]|[-*])\s+/.test(value);
-  const largeScope = /(?:\u5b8c\u6574|\u5168\u5957|\u4ece\u96f6|\u5168\u6d41\u7a0b|\u751f\u4ea7\u7ea7|\bcomplete\b|\bfull\b|\bend[- ]to[- ]end\b|\bproduction\b)/i.test(lower);
-  const score = [implementation, artifact, multiPhase, delivery, numbered].filter(Boolean).length;
-  return (score >= 2 && value.length >= 36) || (score >= 2 && largeScope && value.length >= 10) || (score >= 3 && value.length >= 18);
-}
 
 const BLOCKING_OVERLAY_SELECTOR = [
   "#conversation-tool-overlay:not(.hidden)",
@@ -205,6 +190,11 @@ const EXECUTION_MODE_LABELS = {
   "read-only": "只读",
   ask: "每次确认",
   auto: "自动执行",
+};
+const PLAN_POLICY_LABELS = {
+  explicit: "仅明确规划",
+  smart: "智能规划",
+  always: "总是规划",
 };
 
 /* ---------------- 工具 ---------------- */
@@ -1972,6 +1962,7 @@ function updateState(state) {
   }
   updateComposerState();
   if (state.executionMode) renderExecutionMode(state.executionMode);
+  if (state.planPolicy) renderPlanPolicy(state.planPolicy);
   if (!stateBelongsToBackgroundTask) {
     const reportedContextTokens = Number(state.contextUsage?.tokens);
     currentContextTokens = Number.isFinite(reportedContextTokens) && reportedContextTokens >= 0 ? reportedContextTokens : null;
@@ -2013,6 +2004,21 @@ function setExecutionModeMenuOpen(open) {
   btnExecutionMode.setAttribute("aria-expanded", String(open));
   executionModeMenu.classList.toggle("open", open);
   executionModeMenu.setAttribute("aria-hidden", String(!open));
+}
+
+function renderPlanPolicy(policy) {
+  planPolicy = PLAN_POLICY_LABELS[policy] ? policy : "smart";
+  if (planPolicyLabel) planPolicyLabel.textContent = PLAN_POLICY_LABELS[planPolicy];
+  planPolicyMenu?.querySelectorAll("[data-plan-policy]").forEach((item) => {
+    item.classList.toggle("active", item.dataset.planPolicy === planPolicy);
+  });
+}
+
+function setPlanPolicyMenuOpen(open) {
+  if (!btnPlanPolicy || !planPolicyMenu) return;
+  btnPlanPolicy.setAttribute("aria-expanded", String(open));
+  planPolicyMenu.classList.toggle("open", open);
+  planPolicyMenu.setAttribute("aria-hidden", String(!open));
 }
 
 function renderContextUsage(usage) {
@@ -2061,6 +2067,14 @@ const PLAN_STATUS_LABELS = {
   pending: "等待执行", in_progress: "正在执行", completed: "已完成", blocked: "已阻塞", skipped: "已跳过",
 };
 const PLAN_STATUS_MARKS = { pending: "", in_progress: "·", completed: "✓", blocked: "!", skipped: "−" };
+const PLAN_LIFECYCLE_LABELS = {
+  draft: "待细化",
+  awaiting_approval: "待确认",
+  active: "执行中",
+  completed: "已完成",
+  cancelled: "已取消",
+  superseded: "已替换",
+};
 
 function stablePlanItemId(text, index) {
   let hash = 0;
@@ -2109,6 +2123,7 @@ function normalizePlan(plan, taskId) {
     status,
     createdAt,
     updatedAt: Number.isFinite(Number(plan?.updatedAt)) ? Number(plan.updatedAt) : createdAt,
+    intent: plan?.intent === "plan_only" ? "plan_only" : "execution",
     items,
     history: Array.isArray(plan?.history) ? plan.history.slice(-20) : [],
   };
@@ -2141,6 +2156,7 @@ function renderPlanList() {
   if (!planListWrap || !btnPlanList || !planListItems || !planListCount) return;
   planListWrap.classList.toggle("hidden", !plan);
   if (!plan) {
+    if (planListStatus) planListStatus.textContent = "";
     btnPlanList.setAttribute("aria-expanded", "false");
     planListPopover?.classList.remove("open");
     planListPopover?.setAttribute("aria-hidden", "true");
@@ -2148,6 +2164,7 @@ function renderPlanList() {
   }
   const progress = getPlanProgress(plan);
   planListCount.textContent = `${progress.completed}/${progress.total}`;
+  if (planListStatus) planListStatus.textContent = PLAN_LIFECYCLE_LABELS[plan.status] || "";
   planListItems.innerHTML = plan.items.map((item, index) => `
     <div class="plan-list-item ${item.status} ${item.status === "completed" ? "done" : ""}" title="${PLAN_STATUS_LABELS[item.status]}">
       <span class="plan-list-item-index">${index + 1}</span>
@@ -2222,7 +2239,7 @@ function applyPlanUpdate(update) {
     if (!plan) return;
     task.plan = plan;
   } else {
-    const plan = currentPlan();
+    const plan = migrateTaskPlan(task);
     if (!plan || plan.id !== update.planId) return;
     if (update.action === "replan") {
       const oldItemsByText = new Map(plan.items.map((item) => [item.text.toLowerCase(), item]));
@@ -2260,7 +2277,9 @@ function applyPlanUpdate(update) {
       if (update.toolCallId) item.toolCallIds = [...item.toolCallIds, String(update.toolCallId)].slice(-30);
     }
     plan.updatedAt = now;
-    plan.status = plan.items.every((item) => ["completed", "skipped"].includes(item.status)) ? "completed" : "active";
+    plan.status = plan.items.every((item) => ["completed", "skipped"].includes(item.status))
+      ? "completed"
+      : plan.intent === "plan_only" ? "awaiting_approval" : "active";
   }
   task.updatedAt = now;
   if (task.id === activeTaskId) {
@@ -2412,6 +2431,26 @@ executionModeMenu?.addEventListener("click", async (event) => {
 });
 document.addEventListener("pointerdown", (event) => {
   if (!document.querySelector("#execution-mode-wrap")?.contains(event.target)) setExecutionModeMenuOpen(false);
+});
+
+btnPlanPolicy?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  setPlanPolicyMenuOpen(btnPlanPolicy.getAttribute("aria-expanded") !== "true");
+});
+planPolicyMenu?.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-plan-policy]");
+  if (!button) return;
+  const policy = button.dataset.planPolicy;
+  try {
+    const result = await window.piAgent.setPlanPolicy(policy);
+    renderPlanPolicy(result?.policy || policy);
+    setPlanPolicyMenuOpen(false);
+  } catch (error) {
+    addError(`切换计划策略失败：${error?.message ?? error}`);
+  }
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!document.querySelector("#plan-policy-wrap")?.contains(event.target)) setPlanPolicyMenuOpen(false);
 });
 
 /* ---------------- 项目与任务导航 ---------------- */
@@ -4405,6 +4444,9 @@ document.addEventListener("keydown", (e) => {
     window.piAgent.onState(updateState);
     window.piAgent.onPlanUpdate?.(applyPlanUpdate);
     window.piAgent.onToolApprovalRequested(showToolApproval);
+    window.piAgent.onOpenAICodexLogin?.((event) => {
+      void handleOpenAICodexLoginEvent(event);
+    });
     window.piAgent.onError((msg) => {
       if (!isExpectedAbortMessage(msg)) addError(msg);
     });
@@ -4434,6 +4476,7 @@ document.addEventListener("keydown", (e) => {
       await refreshCustomProviders();
       await refreshMermaidDiagramSettings();
       renderExecutionMode((await window.piAgent.getExecutionMode())?.mode);
+      renderPlanPolicy((await window.piAgent.getPlanPolicy())?.policy);
       const savedModel = localStorage.getItem("pi_current_model");
       const savedThinkingLevel = localStorage.getItem(THINKING_LEVEL_STORAGE_KEY);
       const savedProviderId = savedModel?.split("/")[0];
@@ -4541,6 +4584,11 @@ function updateModelBadge(state) {
    - configuredProviders：来自主进程的"已配置厂商 id"列表（过滤/状态徽章的真相来源）
 */
 let configuredProviders = [];
+const OPENAI_CODEX_PROVIDER_ID = "openai-codex";
+const OPENAI_CODEX_LOGIN_ACTIVE_STATES = new Set([
+  "starting", "browser_opened", "awaiting_callback", "in_progress", "exchanging",
+]);
+let openAICodexLoginState = { state: "idle", detail: null };
 const MODEL_PROVIDER_ENABLED_STORAGE_KEY = "pi_model_provider_enabled";
 let modelProviderEnablement = (() => {
   try {
@@ -4620,6 +4668,111 @@ function isProviderConfigured(id) {
   // 凭证只由主进程安全存储管理，渲染进程不保留明文副本。
   return configuredProviders.includes(id) ||
     customProviderCatalog.some((provider) => provider.id === id);
+}
+
+function isOpenAICodexLoginActive() {
+  return OPENAI_CODEX_LOGIN_ACTIVE_STATES.has(openAICodexLoginState.state);
+}
+
+function openAICodexLoginMessage() {
+  const detail = String(openAICodexLoginState.detail || "").trim();
+  if (detail) return detail;
+  if (openAICodexLoginState.state === "completed") return "ChatGPT 订阅已授权，可以选择 OpenAI Codex 模型。";
+  if (openAICodexLoginState.state === "failed") return "授权未完成，请重试。";
+  return "使用 ChatGPT Plus 或 Pro 订阅授权，无需填写 API Key。";
+}
+
+function renderOpenAICodexLoginPanel(configured) {
+  const state = openAICodexLoginState.state;
+  const active = isOpenAICodexLoginActive();
+  const failed = state === "failed";
+  const completed = configured && !active;
+  const showManualFallback = active && ["browser_opened", "awaiting_callback"].includes(state);
+  const buttonLabel = active ? "正在等待浏览器授权…" : completed ? "重新登录 ChatGPT" : "登录 ChatGPT";
+  const statusLabel = active ? "正在授权" : completed ? "已授权" : failed ? "授权失败" : "尚未登录";
+
+  return `
+    <section class="oauth-login-panel ${active ? "is-active" : ""} ${failed ? "is-error" : ""}" aria-label="ChatGPT 订阅授权">
+      <div class="oauth-login-copy">
+        <span class="oauth-login-kicker">CHATGPT SUBSCRIPTION</span>
+        <p>${escapeHtml(openAICodexLoginMessage())}</p>
+      </div>
+      <div class="oauth-login-actions">
+        <button class="oauth-login-button" data-action="login-openai-codex" type="button" ${active ? "disabled" : ""}>${buttonLabel}</button>
+        ${active ? '<button class="oauth-login-cancel" data-action="cancel-openai-codex-login" type="button">取消</button>' : ""}
+      </div>
+      <p class="oauth-login-status ${active ? "is-active" : failed ? "is-error" : completed ? "is-complete" : ""}" role="status"><span aria-hidden="true"></span>${statusLabel}</p>
+      ${showManualFallback ? `
+        <details class="oauth-login-manual">
+          <summary>浏览器没有自动返回？</summary>
+          <p>完成登录后，将浏览器地址栏中的完整回调链接粘贴到这里。</p>
+          <form data-action="submit-openai-codex-callback" class="oauth-login-manual-form">
+            <input name="callback" type="text" autocomplete="off" spellcheck="false" placeholder="http://localhost:1455/auth/callback?code=…" aria-label="OpenAI 授权回调链接" />
+            <button type="submit">继续</button>
+          </form>
+        </details>` : ""}
+    </section>`;
+}
+
+async function refreshOpenAICodexLoginUi() {
+  const viewState = captureProviderListView();
+  if (!viewState.expandedProviderIds.includes(OPENAI_CODEX_PROVIDER_ID)) {
+    viewState.expandedProviderIds.push(OPENAI_CODEX_PROVIDER_ID);
+  }
+  await renderProviderList({ viewState });
+  renderModelPicker();
+}
+
+async function handleOpenAICodexLoginEvent(event) {
+  if (!event || event.providerId !== OPENAI_CODEX_PROVIDER_ID) return;
+  openAICodexLoginState = {
+    state: typeof event.state === "string" ? event.state : "idle",
+    detail: typeof event.detail === "string" ? event.detail : null,
+  };
+  try {
+    await refreshOpenAICodexLoginUi();
+  } catch (error) {
+    console.warn("Unable to refresh OpenAI Codex login UI:", error);
+  }
+}
+
+async function startOpenAICodexLogin() {
+  if (isOpenAICodexLoginActive()) return;
+  openAICodexLoginState = { state: "starting", detail: "正在准备 ChatGPT 授权…" };
+  await refreshOpenAICodexLoginUi();
+  try {
+    const result = await window.piAgent.loginOpenAICodex();
+    if (result?.cancelled) return;
+    await refreshConfiguredProviders();
+  } catch (error) {
+    openAICodexLoginState = { state: "failed", detail: `授权失败：${error?.message ?? error}` };
+    await refreshOpenAICodexLoginUi();
+  }
+}
+
+async function cancelOpenAICodexLogin() {
+  try {
+    await window.piAgent.cancelOpenAICodexLogin();
+  } catch (error) {
+    addError(`取消 ChatGPT 授权失败：${error?.message ?? error}`);
+  }
+}
+
+async function submitOpenAICodexCallback(form) {
+  const input = form?.elements?.callback;
+  const value = input?.value?.trim() || "";
+  if (!value) {
+    input?.focus();
+    return;
+  }
+  const button = form.querySelector("button[type='submit']");
+  if (button) button.disabled = true;
+  try {
+    await window.piAgent.submitOpenAICodexCallback(value);
+  } catch (error) {
+    addError(`提交授权回调失败：${error?.message ?? error}`);
+    if (button) button.disabled = false;
+  }
 }
 
 async function migrateLegacyPlaintextKeys() {
@@ -5151,8 +5304,8 @@ async function renderProviderList({ viewState = null } = {}) {
     const configured = isProviderConfigured(p.id);
     const enabled = isProviderEnabled(p.id);
     const statusClass = configured ? "configured" : "unconfigured";
-    const statusText = configured ? "已配置" : "未配置";
-    const isOAuth = p.envKey === null && !["openai-codex","google-vertex","amazon-bedrock","github-copilot","qwen-token-plan-cn","zai-coding-cn"].includes(p.id);
+    const isOpenAICodex = p.id === OPENAI_CODEX_PROVIDER_ID;
+    const statusText = configured ? (isOpenAICodex ? "已登录" : "已配置") : "未配置";
 
     return `
       <div class="provider-card" data-provider="${p.id}">
@@ -5165,7 +5318,7 @@ async function renderProviderList({ viewState = null } = {}) {
           <span class="provider-status ${statusClass}">${statusText}</span>
           ${p.custom
             ? `<button class="provider-clear" data-action="delete-custom" data-provider="${p.id}" title="删除自定义厂商">删除</button>`
-            : configured ? `<button class="provider-clear" data-action="clear-key" data-provider="${p.id}" title="清除该厂商配置">清除</button>` : ""}
+            : configured ? `<button class="provider-clear" data-action="clear-key" data-provider="${p.id}" title="${isOpenAICodex ? "退出 ChatGPT 登录" : "清除该厂商配置"}">${isOpenAICodex ? "退出" : "清除"}</button>` : ""}
           <span class="provider-arrow">▶</span>
         </div>
         <div class="provider-body">
@@ -5179,7 +5332,9 @@ async function renderProviderList({ viewState = null } = {}) {
                 </div>
                 <button class="api-key-save" data-action="save-key" data-provider="${p.id}">保存</button>
               </div>`
-            : `<p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${p.id === "openai-codex" || p.id === "github-copilot" ? "使用 OAuth 登录，无需填写 API Key" : p.id === "google-vertex" || p.id === "amazon-bedrock" ? "使用云平台默认凭证（ADC / IAM），无需填写 API Key" : "此服务使用 Token Plan 订阅，无需填写 API Key"}</p>`}
+            : isOpenAICodex
+              ? renderOpenAICodexLoginPanel(configured)
+              : `<p style="font-size:12px;color:var(--text-dim);margin-bottom:10px">${p.id === "github-copilot" ? "使用 OAuth 登录，无需填写 API Key" : p.id === "google-vertex" || p.id === "amazon-bedrock" ? "使用云平台默认凭证（ADC / IAM），无需填写 API Key" : "此服务使用 Token Plan 订阅，无需填写 API Key"}</p>`}
           <div class="provider-enable-row">
             <span>启用厂商 <small class="provider-enable-state">${enabled ? "已启用" : "已停用"}</small></span>
             <label class="provider-enable-switch" title="控制该厂商是否显示在对话模型切换中">
@@ -5249,13 +5404,32 @@ async function renderProviderList({ viewState = null } = {}) {
       }
     });
   });
+  container.querySelectorAll("[data-action='login-openai-codex']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      await startOpenAICodexLogin();
+    });
+  });
+  container.querySelectorAll("[data-action='cancel-openai-codex-login']").forEach((btn) => {
+    btn.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      await cancelOpenAICodexLogin();
+    });
+  });
+  container.querySelectorAll("form[data-action='submit-openai-codex-callback']").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      await submitOpenAICodexCallback(form);
+    });
+  });
   // 清除厂商配置
   container.querySelectorAll("[data-action='clear-key']").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation(); // 防止触发卡片展开
       const providerId = btn.dataset.provider;
       const prov = allProviderCatalog().find((p) => p.id === providerId);
-      if (!confirm(`确定清除 ${prov?.name || providerId} 的配置吗？`)) return;
+      const actionName = providerId === OPENAI_CODEX_PROVIDER_ID ? "退出" : "清除";
+      if (!confirm(`确定${actionName} ${prov?.name || providerId} 的配置吗？`)) return;
 
       // 清空输入框，并通知主进程删除凭证。
       const input = container.querySelector(`.api-key-input[data-provider="${providerId}"]`);
@@ -5266,6 +5440,9 @@ async function renderProviderList({ viewState = null } = {}) {
       } catch (err) {
         addError(`清除 ${providerId} 失败：${err?.message ?? err}`);
         return;
+      }
+      if (providerId === OPENAI_CODEX_PROVIDER_ID) {
+        openAICodexLoginState = { state: "idle", detail: "已退出 ChatGPT 登录。" };
       }
 
       // 如果当前模型属于该厂商，清空选择

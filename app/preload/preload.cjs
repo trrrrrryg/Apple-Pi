@@ -28,6 +28,9 @@ contextBridge.exposeInMainWorld("piAgent", {
   // 密钥持久化到主进程（渲染进程拿不到明文回显）
   saveApiKey: (providerId, apiKey) => ipcRenderer.invoke("agent:saveApiKey", { providerId, apiKey }),
   listConfiguredProviders: () => ipcRenderer.invoke("agent:listConfiguredProviders"),
+  loginOpenAICodex: () => ipcRenderer.invoke("agent:loginOpenAICodex"),
+  submitOpenAICodexCallback: (value) => ipcRenderer.invoke("agent:submitOpenAICodexCallback", { value }),
+  cancelOpenAICodexLogin: () => ipcRenderer.invoke("agent:cancelOpenAICodexLogin"),
   listCustomProviders: () => ipcRenderer.invoke("agent:listCustomProviders"),
   fetchCustomProviderModels: (provider) => ipcRenderer.invoke("agent:fetchCustomProviderModels", provider),
   createCustomProvider: (provider) => ipcRenderer.invoke("agent:createCustomProvider", provider),
@@ -42,6 +45,8 @@ contextBridge.exposeInMainWorld("piAgent", {
   setThinkingLevel: (level) => ipcRenderer.invoke("agent:setThinkingLevel", { level }),
   getExecutionMode: () => ipcRenderer.invoke("agent:getExecutionMode"),
   setExecutionMode: (mode) => ipcRenderer.invoke("agent:setExecutionMode", { mode }),
+  getPlanPolicy: () => ipcRenderer.invoke("agent:getPlanPolicy"),
+  setPlanPolicy: (policy) => ipcRenderer.invoke("agent:setPlanPolicy", { policy }),
   resolveToolApproval: (approvalId, approved) => ipcRenderer.invoke("agent:resolveToolApproval", { approvalId, approved }),
   openProjectFile: (reference) => ipcRenderer.invoke("agent:openProjectFile", { reference }),
   openExternalUrl: (url) => ipcRenderer.invoke("browser:openExternal", { url }),
@@ -123,6 +128,11 @@ contextBridge.exposeInMainWorld("piAgent", {
     const listener = (_e, payload) => callback(payload);
     ipcRenderer.on("agent:approvalRequested", listener);
     return () => ipcRenderer.removeListener("agent:approvalRequested", listener);
+  },
+  onOpenAICodexLogin: (callback) => {
+    const listener = (_e, payload) => callback(payload);
+    ipcRenderer.on("agent:openAICodexLogin", listener);
+    return () => ipcRenderer.removeListener("agent:openAICodexLogin", listener);
   },
 
   // ---- 自动更新 ----
